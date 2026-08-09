@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MMA Mega Fight — Merab · Ilia · Davit</title>
+  <link rel="icon" href="data:," />
+  <link rel="stylesheet" href="./src/style.css" />
+  <script type="importmap">
+    { "imports": { "three": "./vendor/three.module.js" } }
+  </script>
+</head>
+<body>
+  <canvas id="scene"></canvas>
+  <div id="ui">
+    <div id="topbar">
+      <div class="plate blue" id="card-a">
+        <div class="plateHead">
+          <span class="flag">🇬🇪</span>
+          <div class="names">
+            <span class="pfirst">MERAB</span>
+            <span class="plast">DVALISHVILI</span>
+          </div>
+          <span class="nick">THE MACHINE</span>
+        </div>
+        <div class="hpwrap" role="progressbar" aria-label="Blue corner health" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100">
+          <div class="hpghost" id="hpg-a"></div>
+          <div class="hpfill" id="hp-a"></div>
+        </div>
+        <div class="skills"></div>
+      </div>
+      <div id="vsBadge"><span>VS</span></div>
+      <div class="plate red" id="card-b">
+        <div class="plateHead">
+          <span class="flag">🇬🇪🇪🇸</span>
+          <div class="names">
+            <span class="pfirst">ILIA</span>
+            <span class="plast">TOPURIA</span>
+          </div>
+          <span class="nick">EL MATADOR</span>
+        </div>
+        <div class="hpwrap" role="progressbar" aria-label="Red corner health" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100">
+          <div class="hpghost" id="hpg-b"></div>
+          <div class="hpfill" id="hp-b"></div>
+        </div>
+        <div class="skills"></div>
+      </div>
+    </div>
+    <div id="commentaryWrap"><div id="commentary" role="status"></div></div>
+    <div id="banner" class="hidden">
+      <div role="alert">
+        <div id="bannerText"></div>
+        <div id="bannerSub"></div>
+      </div>
+      <div id="bannerBtns">
+        <button id="rematchBtn">REMATCH</button>
+        <button id="changeBtn">CHANGE FIGHTERS</button>
+      </div>
+    </div>
+    <div id="confetti"></div>
+    <div id="menu" class="hidden">
+      <div id="menuTitle">CHOOSE YOUR FIGHTERS</div>
+      <div id="menuCols">
+        <div class="mcol mblue">
+          <div class="mside">BLUE CORNER</div>
+          <div class="mpick" id="pickA"></div>
+        </div>
+        <div class="mvs">VS</div>
+        <div class="mcol mred">
+          <div class="mside">RED CORNER</div>
+          <div class="mpick" id="pickB"></div>
+        </div>
+      </div>
+      <button id="menuFightBtn">FIGHT</button>
+      <div id="menuHint">Winner is whoever leaves the other with 0 HP — every fight is random</div>
+    </div>
+    <div id="loading">
+      <div id="loadTitle"><em>MMA</em> <span>MEGA</span> <em>FIGHT</em></div>
+      <div id="loadBar"><div id="loadFill"></div></div>
+      <div id="loadText">Loading arena…</div>
+    </div>
+  </div>
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
