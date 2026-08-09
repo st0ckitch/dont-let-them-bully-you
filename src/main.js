@@ -232,12 +232,21 @@ function confetti() {
   }
 }
 
-function showBanner(winner, loser) {
-  $('#bannerText').textContent = `${winner.cfg.short} WON!`;
-  $('#bannerText').style.color = winner.corner;
-  $('#bannerText').style.textShadow = `0 0 40px ${winner.corner}, 0 4px 18px rgba(0,0,0,0.9)`;
-  $('#bannerSub').textContent = `${winner.cfg.name} defeats ${loser.cfg.name} by KO`;
+function showBanner(winner, loser, sub) {
+  $('#bannerText').textContent = winner ? `${winner.cfg.short} WON!` : 'DRAW';
+  const color = winner ? winner.corner : '#d4af37';
+  $('#bannerText').style.color = color;
+  $('#bannerText').style.textShadow = `0 0 40px ${color}, 0 4px 18px rgba(0,0,0,0.9)`;
+  $('#bannerSub').textContent = sub;
   $('#banner').classList.remove('hidden');
+}
+
+function flashRoundCard(text) {
+  const rc = $('#roundCard');
+  rc.textContent = text;
+  rc.classList.remove('show');
+  void rc.offsetWidth;
+  rc.classList.add('show');
 }
 
 let shake = 0;
@@ -283,11 +292,37 @@ const engineCallbacks = {
     void card.offsetWidth;
     card.classList.add('hurt');
   },
-  onKO: (winner, loser) => {
-    showBanner(winner, loser);
+  onKO: (winner, loser, info) => {
+    showBanner(winner, loser, info.method === 'flash'
+      ? `KNOCKS OUT ${loser.cfg.name.toUpperCase()} COLD in round ${info.round}!`
+      : `${winner.cfg.name} defeats ${loser.cfg.name} by KO in round ${info.round}`);
     confetti();
     fx.victory(winner.cfg);
   },
+  onDecision: (winner, loser, cards) => {
+    if (winner) {
+      showBanner(winner, loser, `${winner.cfg.name} takes the decision ${cards} after 3 rounds`);
+      confetti();
+      fx.victory(winner.cfg);
+    } else {
+      showBanner(null, null, `Judges score it ${cards} — dead even after 3 rounds`);
+      fx.bell();
+    }
+  },
+  onRound: (() => {
+    let last = '';
+    return (round, tLeft) => {
+      const txt = `0:${String(Math.ceil(tLeft)).padStart(2, '0')}`;
+      const memo = `${round}|${txt}`;
+      if (memo !== last) {
+        last = memo;
+        $('#roundLabel').textContent = `R${round}`;
+        $('#roundClock').textContent = txt;
+      }
+    };
+  })(),
+  onRoundCard: flashRoundCard,
+  onBell: () => fx.bell(),
 };
 
 function startMatch(idA, idB) {

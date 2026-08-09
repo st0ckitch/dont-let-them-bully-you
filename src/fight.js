@@ -1,6 +1,11 @@
 const rand = (a, b) => a + Math.random() * (b - a);
 const pick = arr => arr[Math.floor(Math.random() * arr.length)];
 
+export const ROUNDS = 3;
+export const ROUND_SECONDS = 20;
+const ROUND_RECOVERY = 12; // corner work between rounds
+const DMG_SCALE = 0.5; // Monte-Carlo tuned: ~half the fights reach the judges
+
 // Each move maps to a real animation clip; impacts fire at normalized clip
 // times. `range` = distance the attacker closes to before striking;
 // `reach` = max distance at which an impact can actually land (air gate).
@@ -62,6 +67,17 @@ export function pickMove(stats) {
   return MOVES[0];
 }
 
+// chance the defender abandons defense and swings at the same time
+export function tradeProb(defStats) {
+  return Math.min(0.35, 0.16 + (defStats.speed - 86) * 0.008 + (defStats.striking - 88) * 0.004);
+}
+
+// small chance any clean hit ends it on the spot — better chins resist it
+export function flashKOProb(move, out, defStats) {
+  const base = (out.crit ? 0.03 : 0.008) * (move.heavy ? 1.5 : 1);
+  return Math.max(0.002, base * (105 - defStats.chin) / 15);
+}
+
 export function resolveImpactMath(move, impact, atkStats, defStats, bonus = 0) {
   const p = Math.min(0.9, Math.max(0.3,
     0.58 + bonus + (atkStats.striking - 88) * 0.008 - (defStats.speed - 88) * 0.005));
@@ -71,35 +87,71 @@ export function resolveImpactMath(move, impact, atkStats, defStats, bonus = 0) {
     const crit = Math.random() < 0.12;
     if (crit) dmg *= 1.6;
     dmg *= (182 - defStats.chin) / 92;
+    dmg *= DMG_SCALE;
     return { kind: 'hit', dmg: Math.max(1, Math.round(dmg)), crit };
   }
   if (r < p + 0.22) return { kind: 'block', dmg: Math.round(rand(1, 3)), crit: false };
   return { kind: 'miss', dmg: 0, crit: false };
 }
 
-// Headless Monte Carlo of the same decision math (no animation timing).
+// Headless Monte Carlo of the full ruleset: rounds, trades, flash KOs,
+// scorecards. Returns 'a'/'b' (KO), 'a-dec'/'b-dec' (decision), or 'draw'.
 export function simFight(cfgA, cfgB) {
-  const a = { hp: 100, ...cfgA }, b = { hp: 100, ...cfgB };
-  for (let guard = 0; guard < 500; guard++) {
-    const aAtt = Math.random() < pickAttackerProb(a.stats, b.stats);
-    const atk = aAtt ? a : b;
-    const def = aAtt ? b : a;
-    const move = pickMove(atk.stats);
-    let missRolled = false;
-    for (const imp of move.impacts) {
-      const r = resolveImpactMath(move, imp, atk.stats, def.stats);
-      def.hp -= r.dmg;
-      if (def.hp <= 0) return def === a ? 'b' : 'a';
-      // mirror the live engine: only the FIRST miss of an exchange can trigger a counter
-      if (r.kind === 'miss' && !missRolled && (missRolled = true) && Math.random() < (def.counterSkill || 0)) {
-        const c = resolveImpactMath(COUNTER_MOVE, COUNTER_MOVE.impacts[0], def.stats, atk.stats, counterBonus(atk.stats));
-        atk.hp -= c.dmg;
-        if (atk.hp <= 0) return atk === a ? 'b' : 'a';
-        break; // counter interrupts the rest of the combo
+  const mk = c => ({ hp: 100, stats: c.stats, counterSkill: c.counterSkill });
+  const a = mk(cfgA), b = mk(cfgB);
+  const totals = { a: 0, b: 0 };
+  let pa = 0, pb = 0;
+  const koWin = f => (f === a ? 'a' : 'b');
+  for (let round = 1; round <= ROUNDS; round++) {
+    const rd = { a: 0, b: 0 };
+    let tLeft = ROUND_SECONDS;
+    while (tLeft > 0) {
+      tLeft -= 2 + Math.random() * 1.5;
+      const aAtt = Math.random() < pickAttackerProb(a.stats, b.stats);
+      const atk = aAtt ? a : b, def = aAtt ? b : a;
+      const akey = aAtt ? 'a' : 'b', dkey = aAtt ? 'b' : 'a';
+      const trade = Math.random() < tradeProb(def.stats);
+      const move = pickMove(atk.stats);
+      let missRolled = false;
+      for (const imp of move.impacts) {
+        const r = resolveImpactMath(move, imp, atk.stats, def.stats, trade ? 0.15 : 0);
+        def.hp -= r.dmg;
+        rd[akey] += r.dmg;
+        totals[akey] += r.dmg;
+        if (def.hp > 0 && r.kind === 'hit' && Math.random() < flashKOProb(move, r, def.stats)) def.hp = 0;
+        if (def.hp <= 0) return koWin(atk);
+        // mirror the live engine: only the FIRST miss of an exchange can counter, never in a trade
+        if (!trade && r.kind === 'miss' && !missRolled && (missRolled = true) && Math.random() < (def.counterSkill || 0)) {
+          const c = resolveImpactMath(COUNTER_MOVE, COUNTER_MOVE.impacts[0], def.stats, atk.stats, counterBonus(atk.stats));
+          atk.hp -= c.dmg;
+          rd[dkey] += c.dmg;
+          totals[dkey] += c.dmg;
+          if (atk.hp > 0 && c.kind === 'hit' && Math.random() < flashKOProb(COUNTER_MOVE, c, atk.stats)) atk.hp = 0;
+          if (atk.hp <= 0) return koWin(def);
+          break;
+        }
+      }
+      if (trade) {
+        const move2 = pickMove(def.stats);
+        for (const imp of move2.impacts) {
+          const r = resolveImpactMath(move2, imp, def.stats, atk.stats, 0.15);
+          atk.hp -= r.dmg;
+          rd[dkey] += r.dmg;
+          totals[dkey] += r.dmg;
+          if (atk.hp > 0 && r.kind === 'hit' && Math.random() < flashKOProb(move2, r, atk.stats)) atk.hp = 0;
+          if (atk.hp <= 0) return koWin(def);
+        }
       }
     }
+    if (Math.abs(rd.a - rd.b) < 2) { pa += 10; pb += 10; }
+    else if (rd.a > rd.b) { pa += 10; pb += 9; }
+    else { pb += 10; pa += 9; }
+    a.hp = Math.min(100, a.hp + ROUND_RECOVERY);
+    b.hp = Math.min(100, b.hp + ROUND_RECOVERY);
   }
-  return a.hp >= b.hp ? 'a' : 'b';
+  if (pa !== pb) return pa > pb ? 'a-dec' : 'b-dec';
+  if (Math.abs(totals.a - totals.b) > 3) return totals.a > totals.b ? 'a-dec' : 'b-dec';
+  return 'draw';
 }
 
 function hitLine(move, atk, def, dmg, crit) {
@@ -112,7 +164,9 @@ function hitLine(move, atk, def, dmg, crit) {
   ]);
 }
 
-// ---- live engine: cooldown → approach → strike (→ counter) → cooldown ----
+// ---- live engine ----
+// rounds ⟶ exchanges ⟶ strikes; a strike list (not a single slot) so both
+// fighters can have live strikes at once when they trade.
 export class Engine {
   constructor(a, b, cb) {
     this.a = a;
@@ -123,6 +177,8 @@ export class Engine {
     this.tasks = [];
     this.wait = 0;
     this.strafe = { a: 1, b: -1, t: 3 };
+    this.roundSeconds = ROUND_SECONDS;
+    this.activeStrikes = [];
   }
 
   start() {
@@ -133,9 +189,18 @@ export class Engine {
     this.b.faceToward(this.a.pos, 0, true);
     this.state = 'fighting';
     this.phase = 'cooldown';
-    this.wait = 1.2;
+    this.wait = 1.4;
+    this.round = 1;
+    this.roundClock = this.roundSeconds;
+    this.roundDmg = { a: 0, b: 0 };
+    this.totalDmg = { a: 0, b: 0 };
+    this.scores = [];
+    this.roundEnding = false;
+    this.activeStrikes = [];
     this.cb.onHP();
-    this.cb.onLine('🔔 Here we go — Merab vs Ilia!');
+    this.cb.onRound(1, this.roundSeconds);
+    this.cb.onRoundCard('ROUND 1');
+    this.cb.onLine(`🔔 Round 1 — ${this.a.cfg.short} vs ${this.b.cfg.short}!`);
   }
 
   after(sec, fn) {
@@ -151,6 +216,22 @@ export class Engine {
       }
     }
     if (this.state !== 'fighting') return;
+
+    // round clock
+    this.roundClock -= dt;
+    this.cb.onRound(this.round, Math.max(0, this.roundClock));
+    if (this.roundClock <= 0) this.roundEnding = true;
+    if (this.roundEnding && this.phase === 'cooldown') {
+      this._endRound();
+      return;
+    }
+    if (this.roundClock < -5) {
+      // failsafe: an exchange refused to finish — force the round to end
+      this.activeStrikes.forEach(s => (s.done = true));
+      this._endExchange();
+      this._endRound();
+      return;
+    }
 
     // both fighters always square up (the KO'd/victory states never reach here)
     this.a.faceToward(this.b.pos, dt);
@@ -172,6 +253,7 @@ export class Engine {
   _endExchange(waitMin = 0.5, waitMax = 1.2) {
     this.phase = 'cooldown';
     this.wait = rand(waitMin, waitMax);
+    this.activeStrikes = [];
     this.a.defend(false);
     this.b.defend(false);
   }
@@ -227,91 +309,142 @@ export class Engine {
     }
   }
 
-  _beginStrike() {
-    this.phase = 'strike';
-    this.strikeT = 0;
-    this.strikeDur = this.atk.clipDuration(this.move.key);
-    // pre-roll every impact so the defense can animate in anticipation
-    this.plan = this.move.impacts.map(imp => ({
-      imp,
-      out: resolveImpactMath(this.move, imp, this.atk.stats, this.def.stats),
-      fired: false,
-    }));
-    this.counterAt = null;
+  // Launch one strike. With defense enabled the defender pre-plans visible
+  // reactions: a head-slip/lean for the first dodged impact, a guard snap
+  // right before each blocked impact, and possibly a counter.
+  _launchStrike(atk, def, move, { bonus = 0, defense = true } = {}) {
+    const dur = atk.clipDuration(move.key);
+    const strike = {
+      atk, def, move, dur,
+      t: 0,
+      done: false,
+      counterAt: null,
+      plan: move.impacts.map(imp => ({
+        imp,
+        out: resolveImpactMath(move, imp, atk.stats, def.stats, bonus),
+        fired: false,
+      })),
+    };
 
-    const firstMiss = this.plan.find(p => p.out.kind === 'miss');
-    if (firstMiss) {
-      const missT = firstMiss.imp.at * this.strikeDur;
-      // start the head-slip just before the strike arrives
-      this.after(Math.max(0, missT - 0.35), () => {
-        if (this.phase === 'strike' && this.state === 'fighting' && this.def.state !== 'ko') {
-          this.def.play('dodge', {
-            once: true, fade: 0.28,
-            onDone: () => {
-              if (this.state === 'fighting' && this.def.state === 'idle') this.def.play('idle');
-            },
+    if (defense) {
+      const firstMiss = strike.plan.find(p => p.out.kind === 'miss');
+      if (firstMiss) {
+        const missT = firstMiss.imp.at * dur;
+        // start evading just before the strike arrives
+        this.after(Math.max(0, missT - 0.35), () => {
+          if (this.phase !== 'strike' || this.state !== 'fighting' || def.state === 'ko') return;
+          if (def.currentKey && !['idle', 'walk', 'run'].includes(def.currentKey)) return;
+          if (Math.random() < 0.5) {
+            def.play('dodge', {
+              once: true, fade: 0.28,
+              onDone: () => {
+                if (this.state === 'fighting' && def.state === 'idle') def.play('idle');
+              },
+            });
+          } else {
+            def.evade(0.7); // whole-body lean-back
+          }
+        });
+        // the dodger may fire back — counter specialists thrive here
+        if (Math.random() < (def.cfg.counterSkill || 0)) {
+          strike.counterAt = missT + 0.12;
+        }
+      }
+      // live blocking: guard snaps tight exactly as each blocked shot lands
+      for (const p of strike.plan) {
+        if (p.out.kind === 'block') {
+          this.after(Math.max(0, p.imp.at * dur - 0.12), () => {
+            if (this.phase === 'strike' && this.state === 'fighting' && def.state !== 'ko') def.guardPulse();
           });
         }
-      });
-      // the dodger may fire back — this is Ilia's specialty (cfg.counterSkill)
-      if (Math.random() < (this.def.cfg.counterSkill || 0)) {
-        this.counterAt = missT + 0.12;
       }
     }
 
-    this.atk.play(this.move.key, {
+    atk.play(move.key, {
       once: true,
       fade: 0.25,
       onDone: () => {
+        strike.done = true;
         if (this.state !== 'fighting' || this.phase !== 'strike') return;
-        this.atk.play('idle');
-        this._endExchange();
+        if (atk.state === 'idle') atk.play('idle');
+        if (this.activeStrikes.every(s => s.done)) this._endExchange();
       },
     });
+    this.activeStrikes.push(strike);
+    return strike;
+  }
+
+  _beginStrike() {
+    this.phase = 'strike';
+    this.activeStrikes = [];
+    const { atk, def } = this;
+    // the defender may abandon defense and let one fly at the same time
+    const trade = def.state === 'idle' && Math.random() < tradeProb(def.stats);
+    if (trade) {
+      def.defend(false);
+      this._launchStrike(atk, def, this.move, { bonus: 0.15, defense: false });
+      this._launchStrike(def, atk, pickMove(def.stats), { bonus: 0.15, defense: false });
+      this.cb.onLine(`⚔️ ${atk.cfg.short} and ${def.cfg.short} throw at the same time!`);
+    } else {
+      this._launchStrike(atk, def, this.move);
+    }
   }
 
   _strike(dt) {
-    this.strikeT += dt;
-    // track the target so strikes stay in contact range
-    const d = this.atk.distanceTo(this.def);
-    if (d > this.move.range * 0.8) this.atk.moveToward(this.def.pos, 1.0, dt);
-
-    for (const p of this.plan) {
-      if (!p.fired && this.strikeT >= p.imp.at * this.strikeDur) {
-        p.fired = true;
-        this._applyOutcome(this.move, p.imp, p.out, this.atk, this.def);
-        if (this.state !== 'fighting') return;
+    let counterStrike = null;
+    for (const s of this.activeStrikes) {
+      if (s.done) continue;
+      s.t += dt;
+      // track the target so strikes stay in contact range
+      if (s.t < s.dur * 0.75) {
+        const d = s.atk.distanceTo(s.def);
+        if (d > s.move.range * 0.8) s.atk.moveToward(s.def.pos, 1.0, dt);
+      }
+      for (const p of s.plan) {
+        if (!p.fired && s.t >= p.imp.at * s.dur) {
+          p.fired = true;
+          this._applyOutcome(s.move, p.imp, p.out, s.atk, s.def);
+          if (this.state !== 'fighting') return;
+        }
+      }
+      if (s.counterAt !== null && s.t >= s.counterAt) {
+        s.counterAt = null;
+        counterStrike = s;
+      }
+      // watchdog: never trust the animation-finished callback alone
+      if (s.t > s.dur + 0.6) {
+        s.done = true;
+        if (s.atk.state === 'idle') s.atk.play('idle');
       }
     }
 
-    // dodged strike gets punished: interrupt into the counter
-    if (this.counterAt !== null && this.strikeT >= this.counterAt) {
-      this.counterAt = null;
-      this.plan.forEach(p => (p.fired = true));
-      this._beginCounter();
+    if (counterStrike) {
+      // dodged strike gets punished: cancel everything, interrupt into the counter
+      this.activeStrikes.forEach(s => {
+        s.plan.forEach(p => (p.fired = true));
+        s.done = true;
+      });
+      this._beginCounter(counterStrike.def, counterStrike.atk);
       return;
     }
-
-    // watchdog: never trust the animation-finished callback alone
-    if (this.strikeT > this.strikeDur + 0.6) {
-      this.atk.play('idle');
-      this._endExchange();
-    }
+    if (this.activeStrikes.every(s => s.done)) this._endExchange();
   }
 
-  _beginCounter() {
+  _beginCounter(counterer, victim) {
     this.phase = 'counter';
+    this.counterer = counterer;
+    this.victim = victim;
     this.counterT = 0;
-    this.counterDur = this.def.clipDuration('counter');
+    this.counterDur = counterer.clipDuration('counter');
     this.counterFired = false;
-    this.cb.onLine(`⚡ ${this.def.cfg.short} slips it and fires back!`);
-    this.atk.play('idle', { fade: 0.3 });
-    this.def.play('counter', {
+    this.cb.onLine(`⚡ ${counterer.cfg.short} slips it and fires back!`);
+    victim.play('idle', { fade: 0.3 });
+    counterer.play('counter', {
       once: true,
       fade: 0.3,
       onDone: () => {
         if (this.state !== 'fighting' || this.phase !== 'counter') return;
-        if (this.def.state === 'idle') this.def.play('idle');
+        if (this.counterer.state === 'idle') this.counterer.play('idle');
         this._endExchange();
       },
     });
@@ -319,17 +452,17 @@ export class Engine {
 
   _counter(dt) {
     this.counterT += dt;
-    const d = this.def.distanceTo(this.atk);
-    if (d > COUNTER_MOVE.range * 0.8) this.def.moveToward(this.atk.pos, 1.0, dt);
+    const d = this.counterer.distanceTo(this.victim);
+    if (d > COUNTER_MOVE.range * 0.8) this.counterer.moveToward(this.victim.pos, 1.0, dt);
 
     if (!this.counterFired && this.counterT >= COUNTER_MOVE.impacts[0].at * this.counterDur) {
       this.counterFired = true;
       // roles swap: the original attacker is recovering, so the counter hits often
-      const out = resolveImpactMath(COUNTER_MOVE, COUNTER_MOVE.impacts[0], this.def.stats, this.atk.stats, counterBonus(this.atk.stats));
-      this._applyOutcome(COUNTER_MOVE, COUNTER_MOVE.impacts[0], out, this.def, this.atk);
+      const out = resolveImpactMath(COUNTER_MOVE, COUNTER_MOVE.impacts[0], this.counterer.stats, this.victim.stats, counterBonus(this.victim.stats));
+      this._applyOutcome(COUNTER_MOVE, COUNTER_MOVE.impacts[0], out, this.counterer, this.victim);
     }
     if (this.counterT > this.counterDur + 0.6) {
-      this.def.play('idle');
+      this.counterer.play('idle');
       this._endExchange();
     }
   }
@@ -341,9 +474,11 @@ export class Engine {
       if (out.kind === 'hit') this.cb.onLine(`${atk.cfg.short}'s ${move.label} finds nothing but air!`);
       return;
     }
+    const dmgKey = atk === this.a ? 'a' : 'b';
     if (out.kind === 'hit') {
       def.hp = Math.max(0, def.hp - out.dmg);
-      const heavy = move.heavy || out.dmg >= 16;
+      this.roundDmg[dmgKey] += out.dmg;
+      const heavy = move.heavy || out.dmg >= 14;
       def.flash();
       def.knockback(atk.pos, out.crit ? 1.1 : heavy ? 0.8 : 0.45);
       this.cb.onImpact(heavy, out.crit, move.key.includes('kick') ? 'kick' : 'punch');
@@ -352,16 +487,27 @@ export class Engine {
       this.cb.onLine(move === COUNTER_MOVE
         ? `🔥 ${atk.cfg.short} MAKES HIM PAY! Counter lands! −${out.dmg}`
         : hitLine(move, atk, def, out.dmg, out.crit));
-      if (def.hp <= 0) this._ko(atk, def);
+      if (def.hp <= 0) {
+        this._ko(atk, def, 'ko');
+        return;
+      }
+      // the equalizer: any clean shot can switch the lights off
+      if (Math.random() < flashKOProb(move, out, def.stats)) {
+        def.hp = 0;
+        this.cb.onHP();
+        this.cb.onImpact(true, true, move.key.includes('kick') ? 'kick' : 'punch');
+        this._ko(atk, def, 'flash');
+      }
     } else if (out.kind === 'block') {
       def.hp = Math.max(0, def.hp - out.dmg);
+      this.roundDmg[dmgKey] += out.dmg;
       def.knockback(atk.pos, 0.25);
       this.cb.onHP();
       this.cb.onLine(pick([
         `🛡️ ${def.cfg.short} blocks the ${move.label}!`,
         `🛡️ ${def.cfg.short} catches it on the guard.`,
       ]));
-      if (def.hp <= 0) this._ko(atk, def);
+      if (def.hp <= 0) this._ko(atk, def, 'ko');
     } else {
       this.cb.onLine(pick([
         `${def.cfg.short} slips the ${move.label}!`,
@@ -370,13 +516,79 @@ export class Engine {
     }
   }
 
-  _ko(winner, loser) {
+  _ko(winner, loser, method) {
     this.state = 'ko';
+    this.activeStrikes.forEach(s => (s.done = true));
     loser.ko();
     winner.defend(false);
-    this.cb.onLine(`😵 ${loser.cfg.short} IS DOWN! IT'S ALL OVER!`);
+    this.cb.onLine(method === 'flash'
+      ? `😵 ONE SHOT — ${loser.cfg.short} IS OUT COLD!`
+      : `😵 ${loser.cfg.short} IS DOWN! IT'S ALL OVER!`);
     this.after(0.9, () => winner.play('idle'));
     this.after(1.4, () => winner.victory());
-    this.after(2.0, () => this.cb.onKO(winner, loser));
+    this.after(2.0, () => this.cb.onKO(winner, loser, { method, round: this.round }));
+  }
+
+  _endRound() {
+    const rd = this.roundDmg;
+    let cardA, cardB;
+    if (Math.abs(rd.a - rd.b) < 2) [cardA, cardB] = [10, 10];
+    else [cardA, cardB] = rd.a > rd.b ? [10, 9] : [9, 10];
+    this.scores.push({ a: cardA, b: cardB });
+    this.totalDmg.a += rd.a;
+    this.totalDmg.b += rd.b;
+    this.cb.onBell();
+
+    if (this.round >= ROUNDS) {
+      this._decision();
+      return;
+    }
+
+    this.state = 'break';
+    this.a.play('idle');
+    this.b.play('idle');
+    this.a.defend(false);
+    this.b.defend(false);
+    const rNum = this.round;
+    this.cb.onLine(`🔔 End of round ${rNum} — judges have it ${cardA}–${cardB}.`);
+    this.after(1.2, () => {
+      this.a.hp = Math.min(100, this.a.hp + ROUND_RECOVERY);
+      this.b.hp = Math.min(100, this.b.hp + ROUND_RECOVERY);
+      this.cb.onHP();
+    });
+    this.after(2.4, () => this.cb.onRoundCard(`ROUND ${rNum + 1}`));
+    this.after(3.4, () => {
+      this.round++;
+      this.roundClock = this.roundSeconds;
+      this.roundDmg = { a: 0, b: 0 };
+      this.roundEnding = false;
+      this.state = 'fighting';
+      this.phase = 'cooldown';
+      this.wait = 0.9;
+      this.cb.onBell();
+      this.cb.onRound(this.round, this.roundSeconds);
+      this.cb.onLine(`🔔 Round ${this.round} — here we go!`);
+    });
+  }
+
+  _decision() {
+    this.state = 'over';
+    const pa = this.scores.reduce((s, r) => s + r.a, 0);
+    const pb = this.scores.reduce((s, r) => s + r.b, 0);
+    const cards = `${pa}–${pb}`;
+    let winner = null;
+    if (pa > pb) winner = this.a;
+    else if (pb > pa) winner = this.b;
+    else if (Math.abs(this.totalDmg.a - this.totalDmg.b) > 3) {
+      winner = this.totalDmg.a > this.totalDmg.b ? this.a : this.b;
+    }
+    const loser = winner === null ? null : winner === this.a ? this.b : this.a;
+    this.cb.onLine(`📋 We go to the judges' scorecards…`);
+    if (winner) {
+      this.after(1.2, () => winner.victory());
+      this.after(2.0, () => this.cb.onDecision(winner, loser, cards));
+    } else {
+      this.after(2.0, () => this.cb.onDecision(null, null, cards));
+    }
   }
 }

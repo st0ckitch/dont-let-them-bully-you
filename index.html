@@ -29,7 +29,10 @@
         </div>
         <div class="skills"></div>
       </div>
-      <div id="vsBadge"><span>VS</span></div>
+      <div id="centerCol">
+        <div id="vsBadge"><span>VS</span></div>
+        <div id="roundHud"><span id="roundLabel">R1</span><span id="roundClock">0:20</span></div>
+      </div>
       <div class="plate red" id="card-b">
         <div class="plateHead">
           <span class="flag">🇬🇪🇪🇸</span>
@@ -47,6 +50,7 @@
       </div>
     </div>
     <div id="commentaryWrap"><div id="commentary" role="status"></div></div>
+    <div id="roundCard" aria-hidden="true"></div>
     <div id="banner" class="hidden">
       <div role="alert">
         <div id="bannerText"></div>
@@ -72,7 +76,7 @@
         </div>
       </div>
       <button id="menuFightBtn">FIGHT</button>
-      <div id="menuHint">Winner is whoever leaves the other with 0 HP — every fight is random</div>
+      <div id="menuHint">3 rounds × 20 seconds — win by KO, flash KO, or the judges' scorecards</div>
     </div>
     <div id="loading">
       <div id="loadTitle"><em>MMA</em> <span>MEGA</span> <em>FIGHT</em></div>

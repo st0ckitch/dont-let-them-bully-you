@@ -69,13 +69,16 @@ export class Fighter3D {
       if (d) v.applyQuaternion(d);
       return v;
     };
-    this.flinchAxes = { spine: deltaAxis('Spine02'), neck: deltaAxis('neck') };
+    this.flinchAxes = { spine: deltaAxis('Spine02'), spine01: deltaAxis('Spine01'), neck: deltaAxis('neck') };
 
     this.vel = new THREE.Vector3();
     this.flinchI = 0;
     this.flashI = 0;
     this.guardW = 0;
     this.guardTarget = 0;
+    this.pulseT = -1;
+    this.evadeT = -1;
+    this.evadeDur = 0.7;
     this.yaw = 0;
     this.yawTarget = 0;
     this.koT = -1;
@@ -162,6 +165,17 @@ export class Fighter3D {
     this.guardTarget = on ? 1 : 0;
   }
 
+  // sharp guard tighten timed to an incoming blocked strike
+  guardPulse() {
+    this.pulseT = 0;
+  }
+
+  // whole-body lean-back evade (procedural, works over any base clip)
+  evade(dur = 0.7) {
+    this.evadeT = 0;
+    this.evadeDur = dur;
+  }
+
   flash() {
     this.flashI = 1;
   }
@@ -191,6 +205,8 @@ export class Fighter3D {
     this.flashI = 0;
     this.guardW = 0;
     this.guardTarget = 0;
+    this.pulseT = -1;
+    this.evadeT = -1;
     this.pos.copy(this.startPos);
     this.root.rotation.x = 0;
     if (this.current) {
@@ -212,18 +228,45 @@ export class Fighter3D {
       this.root.rotation.y = this.yaw;
     }
 
-    // guard overlay blends in/out smoothly on top of the playing clip
+    // guard overlay blends in/out smoothly on top of the playing clip;
+    // guardPulse() briefly overdrives it so blocks visibly "catch" the shot
     const gRate = this.guardTarget > this.guardW ? 7 : 4;
     this.guardW += (this.guardTarget - this.guardW) * Math.min(1, dt * gRate);
-    if (this.guardW > 0.01 && this.state !== 'ko' && GUARD_SAFE.has(this.currentKey)) {
+    let gw = this.guardW;
+    if (this.pulseT >= 0) {
+      if (this.pulseT < 0.4) {
+        gw = Math.min(1.6, gw + Math.sin((Math.PI * this.pulseT) / 0.4) * 0.9);
+        this.pulseT += dt;
+      } else {
+        this.pulseT = -1;
+      }
+    }
+    if (gw > 0.01 && this.state !== 'ko' && GUARD_SAFE.has(this.currentKey)) {
       for (const [name, e] of GUARD_DELTAS) {
         const bone = this.bones[name];
         if (!bone) continue;
-        _e.set(e[0] * this.guardW, e[1] * this.guardW, e[2] * this.guardW);
+        _e.set(e[0] * gw, e[1] * gw, e[2] * gw);
         _q.setFromEuler(_e);
         const d = this.bindDelta?.[name];
         if (d) _q.premultiply(d).multiply(_qd.copy(d).invert()); // conjugate into this rig's bone frame
         bone.quaternion.multiply(_q);
+      }
+    }
+
+    // lean-back evade: sine envelope peaks right when the strike whiffs
+    if (this.evadeT >= 0 && this.state !== 'ko') {
+      const u = this.evadeT / this.evadeDur;
+      if (u >= 1) {
+        this.evadeT = -1;
+      } else {
+        const w = Math.sin(Math.PI * u);
+        _q.setFromAxisAngle(this.flinchAxes.spine, -0.42 * w);
+        this.bones.Spine02?.quaternion.multiply(_q);
+        _q.setFromAxisAngle(this.flinchAxes.spine01, -0.22 * w);
+        this.bones.Spine01?.quaternion.multiply(_q);
+        _q.setFromAxisAngle(this.flinchAxes.neck, 0.16 * w); // chin stays tucked
+        this.bones.neck?.quaternion.multiply(_q);
+        this.evadeT += dt;
       }
     }
 

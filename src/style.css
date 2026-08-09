@@ -174,10 +174,64 @@ html, body {
 .sbar div { height: 100%; background: linear-gradient(90deg, var(--blue), #9fd0ff); }
 .plate.red .sbar div { background: linear-gradient(90deg, var(--red-hot), var(--gold-soft)); }
 
-/* ---------- VS badge ---------- */
-#vsBadge {
+/* ---------- VS badge / round HUD ---------- */
+#centerCol {
   align-self: flex-start;
   margin-top: 22px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  flex: 0 0 auto;
+}
+
+#roundHud {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  padding: 4px 13px 3px;
+  background: linear-gradient(160deg, var(--ink) 60%, var(--ink-soft));
+  border: 1px solid var(--line);
+  border-radius: 3px;
+}
+#roundLabel {
+  font-family: var(--anton);
+  font-size: 13px;
+  letter-spacing: 2px;
+  color: var(--gold);
+}
+#roundClock {
+  font-family: var(--anton);
+  font-size: 19px;
+  letter-spacing: 2.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+#roundCard {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  opacity: 0;
+  font-family: var(--anton);
+  font-style: italic;
+  font-size: clamp(60px, 10vw, 130px);
+  letter-spacing: 8px;
+  color: #fff;
+  text-shadow: 0 0 60px rgba(210, 10, 10, 0.85), 0 4px 18px rgba(0, 0, 0, 0.9);
+}
+#roundCard.show { animation: roundCard 1.7s ease forwards; }
+@keyframes roundCard {
+  0% { opacity: 0; transform: scale(1.45); }
+  20% { opacity: 1; transform: scale(1); }
+  72% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+#vsBadge {
   width: 54px;
   height: 54px;
   flex: 0 0 auto;
