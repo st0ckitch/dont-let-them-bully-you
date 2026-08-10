@@ -32,11 +32,16 @@ const ANIM_FILES = {
   sweeping_kick: 'assets/anim_sweeping_kick.glb',
   kung_fu_punch: 'assets/anim_kung_fu_punch.glb',
   high_kick: 'assets/anim_high_kick.glb',
+  punch_combo_3: 'assets/anim_punch_combo_3.glb',
+  punch_combo_5: 'assets/anim_punch_combo_5.glb',
 };
 
 // which rig family each clip was authored on (default: athletic)
-const PORTRAIT_SOURCED = new Set(['uppercut', 'hook', 'punch_combo_2', 'punch_combo_4',
-  'kung_fu_punch', 'high_kick']);
+const CLIP_SOURCE = {
+  uppercut: 'portrait', hook: 'portrait', punch_combo_2: 'portrait',
+  punch_combo_4: 'portrait', kung_fu_punch: 'portrait', high_kick: 'portrait',
+  punch_combo_3: 'dato', punch_combo_5: 'dato',
+};
 
 // Native per-family exports of the same library clip — preferred over
 // retargeting where they exist: the KO fall is on screen for 3 full seconds,
@@ -210,7 +215,7 @@ export async function loadAssets(cfgs, onProgress) {
   animKeys.forEach((k, i) => {
     raw[k] = {
       clip: processClip(anims[i].animations[0], k),
-      family: PORTRAIT_SOURCED.has(k) ? 'portrait' : 'athletic',
+      family: CLIP_SOURCE[k] || 'athletic',
     };
   });
 

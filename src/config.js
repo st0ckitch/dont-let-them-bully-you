@@ -48,4 +48,18 @@ export const COTNE = {
   stats: { striking: 96, grappling: 80, cardio: 86, chin: 98, speed: 79 },
 };
 
-export const FIGHTERS = [MERAB, ILIA, DAVIT, COTNE];
+export const DATO = {
+  id: 'dato', short: 'DATO', name: 'Dato Witaishvili', nick: 'The Firuz', flag: '🇬🇪',
+  body: 'assets/dato_body.glb',
+  rig: 'dato',
+  builtin: 'funny_dance',
+  height: 1.85,
+  victoryClip: 'funny_dance',
+  // counter-brawler: highest counterSkill in the roster + some one-punch pop.
+  // Monte-Carlo balanced: 51/50/54/56% vs merab/ilia/davit/cotne (N=3000)
+  counterSkill: 0.45,
+  powerKO: 1.8,
+  stats: { striking: 94, grappling: 86, cardio: 88, chin: 96, speed: 85 },
+};
+
+export const FIGHTERS = [MERAB, ILIA, DAVIT, COTNE, DATO];

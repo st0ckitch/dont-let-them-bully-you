@@ -124,6 +124,26 @@ export const MOVES = [
     impacts: [{ at: 0.66, min: 13, max: 20 }],
     w: f => 5 + f.stats.striking * 0.08,
   },
+  // ---- Dato's batch; impact `at` values from rotational-energy peaks
+  {
+    key: 'punch_combo_3', label: 'combination', range: 1.05, reach: 1.3, heavy: false,
+    impacts: [
+      { at: 0.27, min: 4, max: 8 },
+      { at: 0.36, min: 4, max: 8 },
+      { at: 0.59, min: 5, max: 9 },
+    ],
+    w: f => 14 + f.stats.striking * 0.2,
+  },
+  {
+    key: 'punch_combo_5', label: 'pressure flurry', range: 1.05, reach: 1.3, heavy: false,
+    impacts: [
+      { at: 0.2, min: 3, max: 6 },
+      { at: 0.36, min: 3, max: 6 },
+      { at: 0.5, min: 3, max: 7 },
+      { at: 0.62, min: 4, max: 7 },
+    ],
+    w: f => 10 + Math.max(0, f.stats.cardio - 84) * 1.4,
+  },
 ];
 
 // Dodge clip timing: per-bone angular-velocity analysis puts the head
