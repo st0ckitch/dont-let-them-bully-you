@@ -171,9 +171,11 @@ export function tradeProb(defStats) {
   return Math.min(0.35, 0.16 + (defStats.speed - 86) * 0.008 + (defStats.striking - 88) * 0.004);
 }
 
-// small chance any clean hit ends it on the spot — better chins resist it
-export function flashKOProb(move, out, defStats) {
-  const base = (out.crit ? 0.03 : 0.008) * (move.heavy ? 1.5 : 1);
+// small chance any clean hit ends it on the spot — better chins resist it.
+// `power` is the attacker's cfg.powerKO (one-punch-power fighters like Cotne
+// carry >1); everyone else defaults to 1.
+export function flashKOProb(move, out, defStats, power = 1) {
+  const base = (out.crit ? 0.03 : 0.008) * (move.heavy ? 1.5 : 1) * power;
   return Math.max(0.002, base * (105 - defStats.chin) / 15);
 }
 
@@ -196,7 +198,7 @@ export function resolveImpactMath(move, impact, atkStats, defStats, bonus = 0) {
 // Headless Monte Carlo of the full ruleset: rounds, trades, flash KOs,
 // scorecards. Returns 'a'/'b' (KO), 'a-dec'/'b-dec' (decision), or 'draw'.
 export function simFight(cfgA, cfgB) {
-  const mk = c => ({ hp: 100, stats: c.stats, counterSkill: c.counterSkill });
+  const mk = c => ({ hp: 100, stats: c.stats, counterSkill: c.counterSkill, powerKO: c.powerKO || 1 });
   const a = mk(cfgA), b = mk(cfgB);
   const totals = { a: 0, b: 0 };
   let pa = 0, pb = 0;
@@ -217,7 +219,7 @@ export function simFight(cfgA, cfgB) {
         def.hp -= r.dmg;
         rd[akey] += r.dmg;
         totals[akey] += r.dmg;
-        if (def.hp > 0 && r.kind === 'hit' && Math.random() < flashKOProb(move, r, def.stats)) def.hp = 0;
+        if (def.hp > 0 && r.kind === 'hit' && Math.random() < flashKOProb(move, r, def.stats, atk.powerKO)) def.hp = 0;
         if (def.hp <= 0) return koWin(atk);
         // mirror the live engine: only the FIRST miss of an exchange can counter, never in a trade
         if (!trade && r.kind === 'miss' && !missRolled && (missRolled = true) && Math.random() < (def.counterSkill || 0)) {
@@ -225,7 +227,7 @@ export function simFight(cfgA, cfgB) {
           atk.hp -= c.dmg;
           rd[dkey] += c.dmg;
           totals[dkey] += c.dmg;
-          if (atk.hp > 0 && c.kind === 'hit' && Math.random() < flashKOProb(COUNTER_MOVE, c, atk.stats)) atk.hp = 0;
+          if (atk.hp > 0 && c.kind === 'hit' && Math.random() < flashKOProb(COUNTER_MOVE, c, atk.stats, def.powerKO)) atk.hp = 0;
           if (atk.hp <= 0) return koWin(def);
           break;
         }
@@ -237,7 +239,7 @@ export function simFight(cfgA, cfgB) {
           atk.hp -= r.dmg;
           rd[dkey] += r.dmg;
           totals[dkey] += r.dmg;
-          if (atk.hp > 0 && r.kind === 'hit' && Math.random() < flashKOProb(move2, r, atk.stats)) atk.hp = 0;
+          if (atk.hp > 0 && r.kind === 'hit' && Math.random() < flashKOProb(move2, r, atk.stats, def.powerKO)) atk.hp = 0;
           if (atk.hp <= 0) return koWin(def);
         }
       }
@@ -616,7 +618,7 @@ export class Engine {
         return;
       }
       // the equalizer: any clean shot can switch the lights off
-      if (Math.random() < flashKOProb(move, out, def.stats)) {
+      if (Math.random() < flashKOProb(move, out, def.stats, atk.cfg.powerKO || 1)) {
         def.hp = 0;
         this.cb.onHP();
         this.cb.onImpact(true, true, /kick|roundhouse|knee/.test(move.key) ? 'kick' : 'punch');

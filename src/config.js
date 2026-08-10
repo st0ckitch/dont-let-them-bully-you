@@ -42,7 +42,10 @@ export const COTNE = {
   height: 1.9,
   victoryClip: 'boom_dance',
   counterSkill: 0.1,
-  stats: { striking: 93, grappling: 80, cardio: 78, chin: 97, speed: 74 },
+  // one-punch power: 4× flash-KO chance — Monte-Carlo balanced (44-56% vs the
+  // roster) to offset the slowest speed/cardio in the game
+  powerKO: 4,
+  stats: { striking: 96, grappling: 80, cardio: 86, chin: 98, speed: 79 },
 };
 
 export const FIGHTERS = [MERAB, ILIA, DAVIT, COTNE];
