@@ -74,7 +74,7 @@ html, body {
   transition: box-shadow 0.3s ease;
 }
 .plate.blue { clip-path: polygon(0 0, 100% 0, calc(100% - 22px) 100%, 0 100%); }
-.plate.red  { clip-path: polygon(22px 0, 100% 0, 100% 100%, 0 100%); }
+.plate.red  { clip-path: polygon(22px 0, 100% 0, 100% 100%, 0 100%); padding-left: 34px; }
 .plate::before {
   content: '';
   position: absolute;
@@ -92,7 +92,7 @@ html, body {
   gap: 10px;
 }
 .flag { font-size: 22px; line-height: 1; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.6)); }
-.names { display: flex; flex-direction: column; }
+.names { display: flex; flex-direction: column; min-width: 0; }
 .pfirst {
   font-family: var(--anton);
   font-size: 13px;
@@ -104,6 +104,11 @@ html, body {
   font-size: 21px;
   letter-spacing: 1.2px;
   line-height: 1.05;
+  /* long surnames (PATCHUASHVILI) must shrink, not spill past the angled clip */
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .nick {
   margin-left: auto;

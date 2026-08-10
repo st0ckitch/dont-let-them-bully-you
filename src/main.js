@@ -61,6 +61,7 @@ scene.add(faceFill, faceFill.target);
 
 // ---------- Audio ----------
 const MUSIC_BAR = (60 / 92) * 4; // one 4/4 bar at 92 BPM
+const MUSIC_VOL = 0.08; // background level — user asked for quiet, half the original 0.16
 
 class FX {
   init() {
@@ -199,7 +200,7 @@ class FX {
     if (!c || this.musicOn) return;
     this.musicOn = true;
     this.mGain = c.createGain();
-    this.mGain.gain.value = 0.16;
+    this.mGain.gain.value = MUSIC_VOL;
     this.mGain.connect(this.out());
 
     // sustained tension pad: detuned saws through a slowly breathing lowpass
@@ -256,8 +257,8 @@ class FX {
     const t = this.ctx.currentTime;
     this.mGain.gain.cancelScheduledValues(t);
     this.mGain.gain.setValueAtTime(this.mGain.gain.value, t);
-    this.mGain.gain.linearRampToValueAtTime(0.05, t + 0.05);
-    this.mGain.gain.setTargetAtTime(0.16, t + 0.4, 0.3);
+    this.mGain.gain.linearRampToValueAtTime(MUSIC_VOL * 0.3, t + 0.05);
+    this.mGain.gain.setTargetAtTime(MUSIC_VOL, t + 0.4, 0.3);
   }
 
   _musicBar(t0, bar) {

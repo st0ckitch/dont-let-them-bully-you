@@ -196,7 +196,6 @@ export async function loadAssets(cfgs, onProgress) {
     if (!bindByFamily[cfg.rig]) bindByFamily[cfg.rig] = captureBind(models[i].scene);
   });
   const athleticBind = bindByFamily.athletic;
-  const portraitBind = bindByFamily.portrait;
 
   // raw clips, tagged by source family
   const raw = {};
@@ -219,7 +218,7 @@ export async function loadAssets(cfgs, onProgress) {
     (nativeClips[s.family] ||= {})[s.key] = processClip(natives[i].animations[0], s.key);
   });
 
-  const bindFor = { athletic: athleticBind, portrait: portraitBind };
+  const bindFor = bindByFamily; // any number of rig families, athletic is the reference
   const clipSets = {};
   for (const family of Object.keys(bindByFamily)) {
     const set = {};

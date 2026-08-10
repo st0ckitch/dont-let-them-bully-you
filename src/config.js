@@ -34,4 +34,15 @@ export const DAVIT = {
   stats: { striking: 90, grappling: 85, cardio: 92, chin: 88, speed: 92 },
 };
 
-export const FIGHTERS = [MERAB, ILIA, DAVIT];
+export const COTNE = {
+  id: 'cotne', short: 'COTNE', name: 'Cotne Patchuashvili', nick: 'The Fatso', flag: '🇬🇪',
+  body: 'assets/cotne_body.glb',
+  rig: 'bigguy',
+  builtin: 'boom_dance',
+  height: 1.9,
+  victoryClip: 'boom_dance',
+  counterSkill: 0.1,
+  stats: { striking: 93, grappling: 80, cardio: 78, chin: 97, speed: 74 },
+};
+
+export const FIGHTERS = [MERAB, ILIA, DAVIT, COTNE];
