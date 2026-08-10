@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from '../vendor/GLTFLoader.js';
+import { MeshoptDecoder } from '../vendor/meshopt_decoder.module.js';
 
 // Animation-only GLBs (mesh/textures stripped offline). All rigs share the
 // same 24-bone skeleton NAMES, but bind-pose orientations differ between the
@@ -172,6 +173,7 @@ export async function loadAssets(cfgs, onProgress) {
   const manager = new THREE.LoadingManager();
   manager.onProgress = (url, loaded, total) => onProgress?.(loaded, total);
   const loader = new GLTFLoader(manager);
+  loader.setMeshoptDecoder(MeshoptDecoder); // assets are EXT_meshopt_compression packed
 
   const bodyPromises = cfgs.map(c => loader.loadAsync(c.body));
   const animKeys = Object.keys(ANIM_FILES);

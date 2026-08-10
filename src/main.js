@@ -5,8 +5,16 @@ import { Fighter3D } from './fighter3d.js';
 import { Engine, simFight } from './fight.js';
 
 const canvas = document.querySelector('#scene');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+// perf tiers: phones get a lower pixel-ratio cap and smaller shadow maps;
+// high-DPR phones skip MSAA entirely (the DPR already supersamples)
+const isMobile = matchMedia('(pointer: coarse)').matches || window.innerWidth < 820;
+const renderer = new THREE.WebGLRenderer({
+  canvas,
+  antialias: !(isMobile && window.devicePixelRatio > 1.7),
+  powerPreference: 'high-performance',
+});
+let dprCap = isMobile ? 1.5 : 2;
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, dprCap));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -34,7 +42,7 @@ scene.add(new THREE.HemisphereLight(0xd8e2ff, 0x1c1c26, 1.5));
 const key = new THREE.DirectionalLight(0xffffff, 3.0);
 key.position.set(2.5, 7, 3.5);
 key.castShadow = true;
-key.shadow.mapSize.set(2048, 2048);
+key.shadow.mapSize.set(isMobile ? 1024 : 2048, isMobile ? 1024 : 2048);
 key.shadow.camera.left = key.shadow.camera.bottom = -6;
 key.shadow.camera.right = key.shadow.camera.top = 6;
 key.shadow.camera.near = 1;
@@ -728,11 +736,28 @@ loadAssets(FIGHTERS, (loaded, total) => {
 const clock = new THREE.Clock();
 let radius = 4.6;
 let camY = 2.45;
+
+// auto-quality: sustained slow frames step the pixel ratio down — fill rate
+// dominates on weak GPUs. Never steps back up; a session settles where it runs.
+let frameEMA = 16;
+let lastDownshift = 0;
+function autoQuality(rawDtMs, t) {
+  if (rawDtMs > 250) return; // hidden-tab hiccup, not real load
+  frameEMA += (rawDtMs - frameEMA) * 0.05;
+  if (frameEMA > 26 && dprCap > 1 && t - lastDownshift > 4) {
+    dprCap = Math.max(1, dprCap - 0.25);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, dprCap));
+    lastDownshift = t;
+    frameEMA = 16;
+  }
+}
 const camTarget = new THREE.Vector3(0, 1.0, 0);
 
 renderer.setAnimationLoop(() => {
-  const dt = Math.min(clock.getDelta(), 0.05);
+  const rawDt = clock.getDelta();
+  const dt = Math.min(rawDt, 0.05);
   const t = clock.elapsedTime;
+  autoQuality(rawDt * 1000, t);
 
   engine?.update(dt);
   for (const f of Object.values(fighters)) {
