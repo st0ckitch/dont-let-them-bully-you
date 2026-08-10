@@ -594,6 +594,7 @@ export class Engine {
     // air gate: whatever was rolled, a strike from out of reach touches nothing
     if (atk.distanceTo(def) > move.reach) {
       if (out.kind === 'hit') this.cb.onLine(`${atk.cfg.short}'s ${move.label} finds nothing but air!`);
+      this.cb.onDodge?.();
       return;
     }
     const dmgKey = atk === this.a ? 'a' : 'b';
@@ -625,6 +626,7 @@ export class Engine {
       def.hp = Math.max(0, def.hp - out.dmg);
       this.roundDmg[dmgKey] += out.dmg;
       def.knockback(atk.pos, 0.25);
+      this.cb.onBlock?.(!!move.heavy);
       this.cb.onHP();
       this.cb.onLine(pick([
         `🛡️ ${def.cfg.short} blocks the ${move.label}!`,
@@ -632,6 +634,7 @@ export class Engine {
       ]));
       if (def.hp <= 0) this._ko(atk, def, 'ko');
     } else {
+      this.cb.onDodge?.();
       this.cb.onLine(pick([
         `${def.cfg.short} slips the ${move.label}!`,
         `${atk.cfg.short} swings and misses!`,

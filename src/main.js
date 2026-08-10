@@ -60,6 +60,8 @@ const faceFill = new THREE.DirectionalLight(0xfff0dd, 0.85);
 scene.add(faceFill, faceFill.target);
 
 // ---------- Audio ----------
+const MUSIC_BAR = (60 / 92) * 4; // one 4/4 bar at 92 BPM
+
 class FX {
   init() {
     if (!this.ctx) {
@@ -189,6 +191,249 @@ class FX {
     }
   }
 
+  // ---------- background fight music (synthesized — no assets, no licenses) ----------
+  // 92 BPM dark percussion loop: kick/snare/hats + phrygian bass + tension pad.
+  // Master sits at 0.16 so it stays background under commentary and impacts.
+  startMusic() {
+    const c = this.ctx;
+    if (!c || this.musicOn) return;
+    this.musicOn = true;
+    this.mGain = c.createGain();
+    this.mGain.gain.value = 0.16;
+    this.mGain.connect(this.out());
+
+    // sustained tension pad: detuned saws through a slowly breathing lowpass
+    const padLp = c.createBiquadFilter();
+    padLp.type = 'lowpass';
+    padLp.frequency.value = 520;
+    padLp.Q.value = 1.2;
+    const padLfo = c.createOscillator();
+    padLfo.frequency.value = 0.11;
+    const padLfoG = c.createGain();
+    padLfoG.gain.value = 220;
+    padLfo.connect(padLfoG).connect(padLp.frequency);
+    const padG = c.createGain();
+    padG.gain.value = 0.05;
+    padLp.connect(padG).connect(this.mGain);
+    this.mPad = [padLfo];
+    for (const [f, det] of [[146.83, -5], [146.83, 5], [220, 3]]) {
+      const o = c.createOscillator();
+      o.type = 'sawtooth';
+      o.frequency.value = f;
+      o.detune.value = det;
+      o.connect(padLp);
+      o.start();
+      this.mPad.push(o);
+    }
+    padLfo.start();
+
+    this.mBar = 0;
+    this.mNext = c.currentTime + 0.08;
+    this.mTimer = setInterval(() => {
+      while (this.musicOn && this.mNext < this.ctx.currentTime + 0.45) {
+        this._musicBar(this.mNext, this.mBar++);
+        this.mNext += MUSIC_BAR;
+      }
+    }, 100);
+  }
+
+  stopMusic(fade = 0.7) {
+    if (!this.musicOn) return;
+    this.musicOn = false;
+    clearInterval(this.mTimer);
+    const c = this.ctx;
+    const g = this.mGain, pad = this.mPad;
+    g.gain.setTargetAtTime(0.0001, c.currentTime, fade / 4);
+    setTimeout(() => {
+      pad.forEach(o => { try { o.stop(); } catch { /* already stopped */ } });
+      g.disconnect();
+    }, fade * 1000 + 200);
+  }
+
+  // sidechain-style dip so big moments (crits, KOs) punch through the music
+  duckMusic() {
+    if (!this.musicOn) return;
+    const t = this.ctx.currentTime;
+    this.mGain.gain.cancelScheduledValues(t);
+    this.mGain.gain.setValueAtTime(this.mGain.gain.value, t);
+    this.mGain.gain.linearRampToValueAtTime(0.05, t + 0.05);
+    this.mGain.gain.setTargetAtTime(0.16, t + 0.4, 0.3);
+  }
+
+  _musicBar(t0, bar) {
+    const step = MUSIC_BAR / 16;
+    const hit = (fn, s, ...args) => fn.call(this, t0 + s * step, ...args);
+
+    for (const s of bar % 4 === 3 ? [0, 6, 8, 14] : [0, 6, 8]) hit(this._mKick, s);
+    hit(this._mSnare, 4, 0.5);
+    hit(this._mSnare, 12, 0.55);
+    if (bar % 2 === 1) hit(this._mSnare, 15, 0.16);
+    for (let s = 0; s < 16; s += 2) hit(this._mHat, s, s === 2 || s === 10 ? 0.09 : 0.045);
+
+    const D = 73.42, C = 65.41, F = 87.31, G = 98.0;
+    const line = bar % 4 === 3 ? [D, D, F, G, D, C, D, F] : [D, D, F, D, D, C, D, D];
+    line.forEach((f, i) => hit(this._mBass, i * 2, f));
+
+    if (bar % 8 === 4) hit(this._mStab, 0);
+    if (bar % 8 === 7) for (let i = 0; i < 4; i++) hit(this._mTom, 12 + i, 170 - i * 24);
+  }
+
+  _mKick(t) {
+    const c = this.ctx;
+    const o = c.createOscillator();
+    o.frequency.setValueAtTime(140, t);
+    o.frequency.exponentialRampToValueAtTime(44, t + 0.1);
+    const g = c.createGain();
+    g.gain.setValueAtTime(0.55, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+    o.connect(g).connect(this.mGain);
+    o.start(t);
+    o.stop(t + 0.24);
+  }
+
+  _mSnare(t, vol) {
+    const c = this.ctx;
+    const src = this._noise(0.12);
+    const bp = c.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = 1900;
+    bp.Q.value = 0.9;
+    const g = c.createGain();
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.13);
+    src.connect(bp).connect(g).connect(this.mGain);
+    src.start(t);
+  }
+
+  _mHat(t, vol) {
+    const c = this.ctx;
+    const src = this._noise(0.035);
+    const hp = c.createBiquadFilter();
+    hp.type = 'highpass';
+    hp.frequency.value = 7200;
+    const g = c.createGain();
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
+    src.connect(hp).connect(g).connect(this.mGain);
+    src.start(t);
+  }
+
+  _mBass(t, freq) {
+    const c = this.ctx;
+    const o = c.createOscillator();
+    o.type = 'sawtooth';
+    o.frequency.value = freq;
+    const lp = c.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 330;
+    const g = c.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.2, t + 0.015);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+    o.connect(lp).connect(g).connect(this.mGain);
+    o.start(t);
+    o.stop(t + 0.17);
+  }
+
+  _mStab(t) {
+    const c = this.ctx;
+    const g = c.createGain();
+    g.gain.setValueAtTime(0.11, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+    const lp = c.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 900;
+    lp.connect(g).connect(this.mGain);
+    for (const f of [146.83, 155.56]) { // D3 + Eb3 — minor-second menace
+      const o = c.createOscillator();
+      o.type = 'sawtooth';
+      o.frequency.value = f;
+      o.connect(lp);
+      o.start(t);
+      o.stop(t + 0.42);
+    }
+  }
+
+  _mTom(t, freq) {
+    const c = this.ctx;
+    const o = c.createOscillator();
+    o.frequency.setValueAtTime(freq, t);
+    o.frequency.exponentialRampToValueAtTime(freq * 0.6, t + 0.1);
+    const g = c.createGain();
+    g.gain.setValueAtTime(0.16, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+    o.connect(g).connect(this.mGain);
+    o.start(t);
+    o.stop(t + 0.14);
+  }
+
+  _noise(sec) {
+    const c = this.ctx;
+    const len = (c.sampleRate * sec) | 0;
+    const buf = c.createBuffer(1, len, c.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+    const src = c.createBufferSource();
+    src.buffer = buf;
+    return src;
+  }
+
+  // ---------- defense SFX ----------
+  // dodge: air whoosh — swept bandpass noise, no transient
+  whoosh() {
+    const c = this.ctx;
+    if (!c) return;
+    const t = c.currentTime;
+    const src = this._noise(0.3);
+    const bp = c.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.Q.value = 2.2;
+    const f0 = 950 * (0.85 + Math.random() * 0.3);
+    bp.frequency.setValueAtTime(f0, t);
+    bp.frequency.exponentialRampToValueAtTime(240, t + 0.24);
+    const g = c.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.5, t + 0.06);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.26);
+    src.connect(bp).connect(g).connect(this.out());
+    src.start(t);
+  }
+
+  // block: forearms catching the shot — dull knock, no sub weight, tiny clack
+  blockHit(heavy) {
+    const c = this.ctx;
+    if (!c) return;
+    const t = c.currentTime;
+    const knock = c.createOscillator();
+    knock.type = 'triangle';
+    knock.frequency.setValueAtTime(heavy ? 200 : 240, t);
+    knock.frequency.exponentialRampToValueAtTime(105, t + 0.07);
+    const kg = c.createGain();
+    kg.gain.setValueAtTime(heavy ? 0.55 : 0.4, t);
+    kg.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+    knock.connect(kg).connect(this.out());
+    knock.start(t);
+    knock.stop(t + 0.12);
+
+    const thump = this._noise(0.05);
+    const lp = c.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 650;
+    const tg = c.createGain();
+    tg.gain.value = heavy ? 0.5 : 0.35;
+    thump.connect(lp).connect(tg).connect(this.out());
+    thump.start(t);
+
+    const clack = this._noise(0.02);
+    const hp2 = c.createBiquadFilter();
+    hp2.type = 'highpass';
+    hp2.frequency.value = 2600;
+    const cg = c.createGain();
+    cg.gain.value = 0.12;
+    clack.connect(hp2).connect(cg).connect(this.out());
+    clack.start(t);
+  }
+
   victory(cfg) {
     // the post-match line owns the stage — cut any lingering crit shout
     for (const v of Object.values(this.voices || {})) {
@@ -209,6 +454,7 @@ class FX {
   }
 }
 const fx = new FX();
+window.__fx = fx;
 
 // ---------- UI ----------
 const $ = s => document.querySelector(s);
@@ -315,7 +561,12 @@ const engineCallbacks = {
     fx.impact(kind, heavy, crit);
     addShake(crit ? 0.2 : heavy ? 0.13 : 0.06);
   },
-  onCrit: atk => fx.critVoice(atk.cfg),
+  onCrit: atk => {
+    fx.critVoice(atk.cfg);
+    fx.duckMusic();
+  },
+  onDodge: () => fx.whoosh(),
+  onBlock: heavy => fx.blockHit(heavy),
   onDamage: (def, dmg, crit) => {
     const card = def === fighterA ? $('#card-a') : $('#card-b');
     popDamage(card, dmg, crit);
@@ -324,6 +575,7 @@ const engineCallbacks = {
     card.classList.add('hurt');
   },
   onKO: (winner, loser, info) => {
+    fx.stopMusic();
     showBanner(winner, loser, info.method === 'flash'
       ? `KNOCKS OUT ${loser.cfg.name.toUpperCase()} COLD in round ${info.round}!`
       : `${winner.cfg.name} defeats ${loser.cfg.name} by KO in round ${info.round}`);
@@ -331,6 +583,7 @@ const engineCallbacks = {
     fx.victory(winner.cfg);
   },
   onDecision: (winner, loser, cards) => {
+    fx.stopMusic();
     if (winner) {
       showBanner(winner, loser, `${winner.cfg.name} takes the decision ${cards} after 3 rounds`);
       confetti();
@@ -371,6 +624,7 @@ function startMatch(idA, idB) {
   engine = new Engine(fighterA, fighterB, engineCallbacks);
   $('#menu').classList.add('hidden');
   fx.bell();
+  fx.startMusic();
   engine.start();
   updateHP();
   window.__fight = { engine, fighters, fighterA, fighterB, simFight };
@@ -421,6 +675,7 @@ $('#rematchBtn').addEventListener('click', () => {
   $('#banner').classList.add('hidden');
   $('#confetti').innerHTML = '';
   fx.bell();
+  fx.startMusic();
   engine.start();
 });
 
