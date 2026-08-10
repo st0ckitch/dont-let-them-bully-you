@@ -16,10 +16,52 @@ const ANIM_FILES = {
   chest_pound: 'assets/anim_chest_pound.glb',
   flex: 'assets/anim_flex.glb',
   hook: 'assets/anim_hook.glb',
+  knock_down: 'assets/anim_knock_down.glb',
+  punch_combo_2: 'assets/anim_punch_combo_2.glb',
+  punch_combo_4: 'assets/anim_punch_combo_4.glb',
+  backflip_kick: 'assets/anim_backflip_kick.glb',
+  counterstrike: 'assets/anim_counterstrike.glb',
+  double_kick: 'assets/anim_double_kick.glb',
+  jumping_punch: 'assets/anim_jumping_punch.glb',
+  lunge_spin_kick: 'assets/anim_lunge_spin_kick.glb',
+  knee_strike: 'assets/anim_knee_strike.glb',
+  elbow_strike: 'assets/anim_elbow_strike.glb',
+  lunge_roundhouse: 'assets/anim_lunge_roundhouse.glb',
+  spartan_kick: 'assets/anim_spartan_kick.glb',
+  sweeping_kick: 'assets/anim_sweeping_kick.glb',
+  kung_fu_punch: 'assets/anim_kung_fu_punch.glb',
+  high_kick: 'assets/anim_high_kick.glb',
 };
 
 // which rig family each clip was authored on (default: athletic)
-const PORTRAIT_SOURCED = new Set(['uppercut', 'hook']);
+const PORTRAIT_SOURCED = new Set(['uppercut', 'hook', 'punch_combo_2', 'punch_combo_4',
+  'kung_fu_punch', 'high_kick']);
+
+// Native per-family exports of the same library clip — preferred over
+// retargeting where they exist: the KO fall is on screen for 3 full seconds,
+// too visible to tolerate bind-delta error.
+const FAMILY_NATIVE = {
+  portrait: {
+    knock_down: 'assets/anim_knock_down_portrait.glb',
+    spartan_kick: 'assets/anim_spartan_kick_portrait.glb',
+    sweeping_kick: 'assets/anim_sweeping_kick_portrait.glb',
+  },
+};
+
+// The KO fall's baked hip travel must survive processing — it carries the
+// body backwards onto the canvas. Everything else stays pinned in place.
+const KEEP_HIPS_TRAVEL = new Set(['knock_down']);
+
+// Some Meshy clips ship with dead spans (motionless lead-in/tail) or bundle
+// two actions — trim to the active window found by per-bin rotational-energy
+// analysis. counterstrike keeps only its first burst (the actual counter).
+// knock_down drops its 1.1s pre-fall stagger so a KO reads as a direct fall.
+const TRIM_WINDOWS = {
+  punch_combo_4: [1.85, 4.75],
+  kung_fu_punch: [0.5, 4.8],
+  counterstrike: [1.3, 3.1],
+  knock_down: [1.05, 3.3],
+};
 
 // Dodge_and_Counter windows from per-bone angular-velocity analysis:
 // slip at 0.6–2.0s, right-hand counter flurry at 2.0–3.45s (contiguous).
@@ -31,18 +73,21 @@ const _qb = new THREE.Quaternion();
 const _qc = new THREE.Quaternion();
 
 // Rotation-only retarget prep: drop translation tracks except hips (X/Z
-// pinned so clips stay in place — the engine drives root motion).
+// pinned so clips stay in place — the engine drives root motion — unless the
+// clip's hip travel is part of the action, like the KO fall).
 function processClip(clip, name) {
   const tracks = [];
   for (const t of clip.tracks) {
     if (t.name.endsWith('.quaternion')) {
       tracks.push(t);
     } else if (t.name === 'Hips.position') {
-      const v = t.values;
-      const x0 = v[0], z0 = v[2];
-      for (let i = 0; i < v.length; i += 3) {
-        v[i] = x0;
-        v[i + 2] = z0;
+      if (!KEEP_HIPS_TRAVEL.has(name)) {
+        const v = t.values;
+        const x0 = v[0], z0 = v[2];
+        for (let i = 0; i < v.length; i += 3) {
+          v[i] = x0;
+          v[i + 2] = z0;
+        }
       }
       tracks.push(t);
     }
@@ -91,6 +136,22 @@ function retargetClip(clip, fromBind, toBind) {
   return new THREE.AnimationClip(clip.name, clip.duration, tracks);
 }
 
+// Shift a clip's Hips.position X/Z so its first frame sits at the reference
+// offset (the untrimmed clip's frame 0), preserving all travel after it.
+function rebaseHipTravel(clip, refX, refZ) {
+  for (const t of clip.tracks) {
+    if (t.name === 'Hips.position') {
+      const v = t.values;
+      const dx = v[0] - refX;
+      const dz = v[2] - refZ;
+      for (let i = 0; i < v.length; i += 3) {
+        v[i] -= dx;
+        v[i + 2] -= dz;
+      }
+    }
+  }
+}
+
 function captureBind(scene) {
   scene.updateMatrixWorld(true);
   const bind = {};
@@ -115,11 +176,15 @@ export async function loadAssets(cfgs, onProgress) {
   const bodyPromises = cfgs.map(c => loader.loadAsync(c.body));
   const animKeys = Object.keys(ANIM_FILES);
   const animPromises = animKeys.map(k => loader.loadAsync(ANIM_FILES[k]));
+  const nativeSpecs = Object.entries(FAMILY_NATIVE).flatMap(([family, files]) =>
+    Object.entries(files).map(([key, url]) => ({ family, key, url })));
+  const nativePromises = nativeSpecs.map(s => loader.loadAsync(s.url));
   const octagonPromise = loader.loadAsync('assets/octagon.glb');
   // await together so the first rejection surfaces immediately
-  const [bodies, anims, octagonGltf] = await Promise.all([
+  const [bodies, anims, natives, octagonGltf] = await Promise.all([
     Promise.all(bodyPromises),
     Promise.all(animPromises),
+    Promise.all(nativePromises),
     octagonPromise,
   ]);
 
@@ -148,15 +213,31 @@ export async function loadAssets(cfgs, onProgress) {
     };
   });
 
+  // native per-family clips (no retarget needed)
+  const nativeClips = {};
+  nativeSpecs.forEach((s, i) => {
+    (nativeClips[s.family] ||= {})[s.key] = processClip(natives[i].animations[0], s.key);
+  });
+
   const bindFor = { athletic: athleticBind, portrait: portraitBind };
   const clipSets = {};
   for (const family of Object.keys(bindByFamily)) {
     const set = {};
     for (const [k, { clip, family: src }] of Object.entries(raw)) {
-      set[k] = src === family ? clip : retargetClip(clip, bindFor[src], bindFor[family]);
+      set[k] = nativeClips[family]?.[k]
+        || (src === family ? clip : retargetClip(clip, bindFor[src], bindFor[family]));
     }
     set.dodge = THREE.AnimationUtils.subclip(set.dodge_counter, 'dodge', DODGE_WINDOW[0] * 30, DODGE_WINDOW[1] * 30, 30);
     set.counter = THREE.AnimationUtils.subclip(set.dodge_counter, 'counter', COUNTER_WINDOW[0] * 30, COUNTER_WINDOW[1] * 30, 30);
+    for (const [k, [t0, t1]] of Object.entries(TRIM_WINDOWS)) {
+      const pre = set[k].tracks.find(t => t.name === 'Hips.position');
+      const refX = pre ? pre.values[0] : 0;
+      const refZ = pre ? pre.values[2] : 0;
+      set[k] = THREE.AnimationUtils.subclip(set[k], k, t0 * 30, t1 * 30, 30);
+      // clips with live hip travel get re-anchored to the rig's rest offset,
+      // otherwise the cut would start mid-stagger with the body displaced
+      if (KEEP_HIPS_TRAVEL.has(k)) rebaseHipTravel(set[k], refX, refZ);
+    }
     clipSets[family] = set;
   }
 

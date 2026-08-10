@@ -11,6 +11,8 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.18; // lift ACES midtones so skin reads natural, not muddy
+renderer.outputColorSpace = THREE.SRGBColorSpace;
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x07070c);
@@ -52,6 +54,10 @@ scene.add(spot, spot.target);
 const fill = new THREE.DirectionalLight(0xbfcaff, 1.1);
 fill.position.set(-3, 4, -4);
 scene.add(fill);
+// camera-following face light: guarantees the side facing the viewer (faces,
+// chests) is never in the dark regardless of where the orbit camera sits
+const faceFill = new THREE.DirectionalLight(0xfff0dd, 0.85);
+scene.add(faceFill, faceFill.target);
 
 // ---------- Audio ----------
 class FX {
@@ -164,7 +170,31 @@ class FX {
     }
   }
 
+  // crit celebration: the attacker shouts their own line mid-fight.
+  // Throttled so back-to-back crits don't stutter-restart the clip.
+  critVoice(cfg) {
+    const a = this.voices?.[cfg.id];
+    if (!a) return;
+    const now = performance.now();
+    if (this._voiceUntil && now < this._voiceUntil) return;
+    // a.duration is NaN before metadata loads and can be Infinity for streams
+    const dur = Number.isFinite(a.duration) && a.duration > 0 ? a.duration : 2.5;
+    this._voiceUntil = now + Math.max(2500, dur * 1000 + 800);
+    try {
+      a.currentTime = 0;
+      a.volume = 0.9;
+      a.play().catch(() => {});
+    } catch {
+      /* ignore */
+    }
+  }
+
   victory(cfg) {
+    // the post-match line owns the stage — cut any lingering crit shout
+    for (const v of Object.values(this.voices || {})) {
+      try { v.pause(); } catch { /* ignore */ }
+    }
+    this._voiceUntil = 0;
     const a = this.voices?.[cfg.id];
     if (a) {
       try {
@@ -285,6 +315,7 @@ const engineCallbacks = {
     fx.impact(kind, heavy, crit);
     addShake(crit ? 0.2 : heavy ? 0.13 : 0.06);
   },
+  onCrit: atk => fx.critVoice(atk.cfg),
   onDamage: (def, dmg, crit) => {
     const card = def === fighterA ? $('#card-a') : $('#card-b');
     popDamage(card, dmg, crit);
@@ -469,7 +500,9 @@ renderer.setAnimationLoop(() => {
   const MAX_R = 5.0;
   const td = camTarget.x * dirX + camTarget.z * dirZ;
   const t2 = camTarget.x * camTarget.x + camTarget.z * camTarget.z;
-  const rEye = Math.min(radius, -td + Math.sqrt(Math.max(0, td * td + MAX_R * MAX_R - t2)));
+  // floor at 2.4 so the fence clamp can never pull the eye inside the
+  // fighters when an exchange happens against the cage
+  const rEye = Math.max(2.4, Math.min(radius, -td + Math.sqrt(Math.max(0, td * td + MAX_R * MAX_R - t2))));
   camera.position.set(
     camTarget.x + dirX * rEye,
     camY + Math.sin(t * 0.23) * 0.07,
@@ -481,6 +514,9 @@ renderer.setAnimationLoop(() => {
     shake *= Math.exp(-5 * dt);
   }
   camera.lookAt(camTarget.x, 1.02, camTarget.z);
+
+  faceFill.position.set(camera.position.x, camera.position.y + 1.2, camera.position.z);
+  faceFill.target.position.set(camTarget.x, 1.4, camTarget.z);
 
   renderer.render(scene, camera);
 });

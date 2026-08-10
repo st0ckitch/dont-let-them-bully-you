@@ -39,13 +39,112 @@ export const MOVES = [
     impacts: [{ at: 0.5, min: 10, max: 16 }],
     w: f => 15 + f.stats.striking * 0.25,
   },
+  {
+    key: 'punch_combo_2', label: 'blitz combo', range: 1.05, reach: 1.3, heavy: false,
+    impacts: [
+      { at: 0.23, min: 3, max: 6 },
+      { at: 0.44, min: 3, max: 6 },
+      { at: 0.6, min: 3, max: 7 },
+      { at: 0.7, min: 4, max: 8 },
+    ],
+    w: f => 18 + Math.max(0, f.stats.speed - 84) * 1.5,
+  },
+  {
+    key: 'punch_combo_4', label: 'body combo', range: 1.05, reach: 1.3, heavy: false,
+    impacts: [
+      { at: 0.22, min: 4, max: 7 },
+      { at: 0.4, min: 3, max: 6 },
+      { at: 0.59, min: 4, max: 7 },
+      { at: 0.78, min: 4, max: 8 },
+    ],
+    w: f => 14 + f.stats.striking * 0.22,
+  },
+  // ---- second animation batch; impact `at` values sit on the clip's
+  // rotational-energy peaks so strikes, dodges and blocks line up visually
+  {
+    key: 'double_kick', label: 'double kick', range: 1.35, reach: 1.6, heavy: true,
+    impacts: [
+      { at: 0.3, min: 7, max: 12 },
+      { at: 0.46, min: 7, max: 12 },
+    ],
+    w: f => 6 + Math.max(0, f.stats.speed - 84) * 1.6,
+  },
+  {
+    key: 'jumping_punch', label: 'jumping punch', range: 1.15, reach: 1.4, heavy: false,
+    impacts: [{ at: 0.46, min: 9, max: 15 }],
+    w: f => 9 + Math.max(0, f.stats.speed - 86) * 1.6,
+  },
+  {
+    key: 'lunge_spin_kick', label: 'spinning kick', range: 1.35, reach: 1.6, heavy: true,
+    impacts: [{ at: 0.63, min: 12, max: 19 }],
+    w: f => 6 + f.stats.striking * 0.09,
+  },
+  {
+    key: 'backflip_kick', label: 'backflip sweep kick', range: 1.4, reach: 1.65, heavy: true,
+    impacts: [{ at: 0.74, min: 15, max: 23 }],
+    w: f => 3 + Math.max(0, f.stats.speed - 86) * 1.2,
+  },
+  {
+    key: 'knee_strike', label: 'step knee', range: 1.0, reach: 1.25, heavy: false,
+    impacts: [{ at: 0.33, min: 9, max: 15 }],
+    w: f => 6 + f.stats.grappling * 0.1,
+  },
+  {
+    key: 'elbow_strike', label: 'elbow strike', range: 1.0, reach: 1.25, heavy: false,
+    impacts: [{ at: 0.48, min: 9, max: 16 }],
+    w: f => 6 + f.stats.striking * 0.1,
+  },
+  {
+    key: 'lunge_roundhouse', label: 'lunging roundhouse', range: 1.4, reach: 1.65, heavy: true,
+    impacts: [{ at: 0.66, min: 13, max: 21 }],
+    w: f => 5 + f.stats.striking * 0.08,
+  },
+  {
+    key: 'spartan_kick', label: 'spartan kick', range: 1.25, reach: 1.5, heavy: true,
+    impacts: [{ at: 0.51, min: 12, max: 20 }],
+    w: f => 5 + f.stats.striking * 0.08,
+  },
+  {
+    key: 'sweeping_kick', label: 'sweeping kick', range: 1.3, reach: 1.55, heavy: true,
+    impacts: [{ at: 0.53, min: 11, max: 17 }],
+    w: f => 5 + Math.max(0, f.stats.speed - 84) * 1.2,
+  },
+  {
+    key: 'kung_fu_punch', label: 'kung-fu flurry', range: 1.05, reach: 1.3, heavy: false,
+    impacts: [
+      { at: 0.16, min: 4, max: 7 },
+      { at: 0.36, min: 4, max: 7 },
+      { at: 0.58, min: 4, max: 8 },
+      { at: 0.74, min: 5, max: 8 },
+    ],
+    w: f => 8 + f.stats.striking * 0.1,
+  },
+  {
+    key: 'high_kick', label: 'step high kick', range: 1.3, reach: 1.55, heavy: true,
+    impacts: [{ at: 0.66, min: 13, max: 20 }],
+    w: f => 5 + f.stats.striking * 0.08,
+  },
 ];
+
+// Dodge clip timing: per-bone angular-velocity analysis puts the head
+// furthest off-line ~1.25s into the dodge subclip; played at DODGE_SPEED the
+// peak arrives DODGE_PEAK seconds after the clip starts.
+const DODGE_SPEED = 1.4;
+const DODGE_PEAK = 1.25 / DODGE_SPEED;
 
 // Reactive move only: triggered when a strike is dodged, never picked as an attack.
 export const COUNTER_MOVE = {
   key: 'counter', label: 'counter', range: 1.2, reach: 1.5, heavy: false,
   impacts: [{ at: 0.58, min: 9, max: 14 }],
 };
+
+// Two counter animations chosen at random: the dodge_counter flurry subclip
+// and the dedicated Counterstrike clip. Damage math stays COUNTER_MOVE's —
+// only the visuals and the impact moment (energy-peak fraction) differ.
+const COUNTER_CLIPS = [
+  { key: 'counter', at: 0.58 },
+  { key: 'counterstrike', at: 0.67 },
+];
 
 // countering a strong grappler is risky — their frame resists the shot
 export function counterBonus(victimStats) {
@@ -248,6 +347,21 @@ export class Engine {
     } else if (this.phase === 'counter') {
       this._counter(dt);
     }
+    this._separate();
+  }
+
+  // hard body-collision floor: strike tracking and knockback may not push the
+  // fighters inside each other (reaches are ≥1.2, so hits still land)
+  _separate() {
+    const MIN_D = 0.88;
+    const d = this.a.distanceTo(this.b);
+    if (d > 1e-4 && d < MIN_D) {
+      const push = (MIN_D - d) / 2;
+      const dx = (this.b.pos.x - this.a.pos.x) / d;
+      const dz = (this.b.pos.z - this.a.pos.z) / d;
+      this.a.pos.x -= dx * push; this.a.pos.z -= dz * push;
+      this.b.pos.x += dx * push; this.b.pos.z += dz * push;
+    }
   }
 
   _endExchange(waitMin = 0.5, waitMax = 1.2) {
@@ -330,19 +444,22 @@ export class Engine {
       const firstMiss = strike.plan.find(p => p.out.kind === 'miss');
       if (firstMiss) {
         const missT = firstMiss.imp.at * dur;
-        // start evading just before the strike arrives
-        this.after(Math.max(0, missT - 0.35), () => {
+        // Pick the reaction that can PEAK exactly when the strike whiffs:
+        // the head-slip clip needs DODGE_PEAK of lead time, so early impacts
+        // fall back to the procedural lean-back (peaks 0.4s after trigger).
+        const useClip = missT >= DODGE_PEAK && Math.random() < 0.5;
+        this.after(Math.max(0, missT - (useClip ? DODGE_PEAK : 0.4)), () => {
           if (this.phase !== 'strike' || this.state !== 'fighting' || def.state === 'ko') return;
           if (def.currentKey && !['idle', 'walk', 'run'].includes(def.currentKey)) return;
-          if (Math.random() < 0.5) {
+          if (useClip) {
             def.play('dodge', {
-              once: true, fade: 0.28,
+              once: true, fade: 0.2, timeScale: DODGE_SPEED,
               onDone: () => {
-                if (this.state === 'fighting' && def.state === 'idle') def.play('idle');
+                if (this.state === 'fighting' && def.state === 'idle') def.play('idle', { fade: 0.35 });
               },
             });
           } else {
-            def.evade(0.7); // whole-body lean-back
+            def.evade(0.8); // whole-body lean-back, sine peak at impact
           }
         });
         // the dodger may fire back — counter specialists thrive here
@@ -350,10 +467,11 @@ export class Engine {
           strike.counterAt = missT + 0.12;
         }
       }
-      // live blocking: guard snaps tight exactly as each blocked shot lands
+      // live blocking: the guard pulse envelope peaks 0.18s in, so schedule
+      // 0.18s early — the tighten lands exactly as each blocked shot arrives
       for (const p of strike.plan) {
         if (p.out.kind === 'block') {
-          this.after(Math.max(0, p.imp.at * dur - 0.12), () => {
+          this.after(Math.max(0, p.imp.at * dur - 0.18), () => {
             if (this.phase === 'strike' && this.state === 'fighting' && def.state !== 'ko') def.guardPulse();
           });
         }
@@ -395,10 +513,11 @@ export class Engine {
     for (const s of this.activeStrikes) {
       if (s.done) continue;
       s.t += dt;
-      // track the target so strikes stay in contact range
+      // track the target so strikes stay in contact range — but never chase
+      // closer than the body-collision floor allows
       if (s.t < s.dur * 0.75) {
         const d = s.atk.distanceTo(s.def);
-        if (d > s.move.range * 0.8) s.atk.moveToward(s.def.pos, 1.0, dt);
+        if (d > Math.max(s.move.range * 0.8, 0.95)) s.atk.moveToward(s.def.pos, 1.0, dt);
       }
       for (const p of s.plan) {
         if (!p.fired && s.t >= p.imp.at * s.dur) {
@@ -435,11 +554,14 @@ export class Engine {
     this.counterer = counterer;
     this.victim = victim;
     this.counterT = 0;
-    this.counterDur = counterer.clipDuration('counter');
+    const variants = COUNTER_CLIPS.filter(v => counterer.actions[v.key]);
+    const v = variants.length ? variants[Math.floor(Math.random() * variants.length)] : COUNTER_CLIPS[0];
+    this.counterAt = v.at;
+    this.counterDur = counterer.clipDuration(v.key);
     this.counterFired = false;
     this.cb.onLine(`⚡ ${counterer.cfg.short} slips it and fires back!`);
     victim.play('idle', { fade: 0.3 });
-    counterer.play('counter', {
+    counterer.play(v.key, {
       once: true,
       fade: 0.3,
       onDone: () => {
@@ -455,7 +577,7 @@ export class Engine {
     const d = this.counterer.distanceTo(this.victim);
     if (d > COUNTER_MOVE.range * 0.8) this.counterer.moveToward(this.victim.pos, 1.0, dt);
 
-    if (!this.counterFired && this.counterT >= COUNTER_MOVE.impacts[0].at * this.counterDur) {
+    if (!this.counterFired && this.counterT >= this.counterAt * this.counterDur) {
       this.counterFired = true;
       // roles swap: the original attacker is recovering, so the counter hits often
       const out = resolveImpactMath(COUNTER_MOVE, COUNTER_MOVE.impacts[0], this.counterer.stats, this.victim.stats, counterBonus(this.victim.stats));
@@ -481,7 +603,8 @@ export class Engine {
       const heavy = move.heavy || out.dmg >= 14;
       def.flash();
       def.knockback(atk.pos, out.crit ? 1.1 : heavy ? 0.8 : 0.45);
-      this.cb.onImpact(heavy, out.crit, move.key.includes('kick') ? 'kick' : 'punch');
+      this.cb.onImpact(heavy, out.crit, /kick|roundhouse|knee/.test(move.key) ? 'kick' : 'punch');
+      if (out.crit) this.cb.onCrit?.(atk);
       this.cb.onDamage(def, out.dmg, out.crit);
       this.cb.onHP();
       this.cb.onLine(move === COUNTER_MOVE
@@ -495,7 +618,7 @@ export class Engine {
       if (Math.random() < flashKOProb(move, out, def.stats)) {
         def.hp = 0;
         this.cb.onHP();
-        this.cb.onImpact(true, true, move.key.includes('kick') ? 'kick' : 'punch');
+        this.cb.onImpact(true, true, /kick|roundhouse|knee/.test(move.key) ? 'kick' : 'punch');
         this._ko(atk, def, 'flash');
       }
     } else if (out.kind === 'block') {
@@ -524,9 +647,13 @@ export class Engine {
     this.cb.onLine(method === 'flash'
       ? `😵 ONE SHOT — ${loser.cfg.short} IS OUT COLD!`
       : `😵 ${loser.cfg.short} IS DOWN! IT'S ALL OVER!`);
+    // let the fall play out: victory starts as the loser crumples, the banner
+    // waits until he's flat on the canvas
+    const fall = loser.clipDuration('knock_down');
     this.after(0.9, () => winner.play('idle'));
-    this.after(1.4, () => winner.victory());
-    this.after(2.0, () => this.cb.onKO(winner, loser, { method, round: this.round }));
+    this.after(fall ? 1.7 : 1.4, () => winner.victory());
+    this.after(fall ? Math.min(Math.max(fall - 0.4, 2.0), 2.9) : 2.0,
+      () => this.cb.onKO(winner, loser, { method, round: this.round }));
   }
 
   _endRound() {

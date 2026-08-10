@@ -184,8 +184,17 @@ export class Fighter3D {
   ko() {
     this.state = 'ko';
     this.guardTarget = 0;
-    if (this.current) this.current.paused = true;
-    this.koT = 0;
+    this.evadeT = -1;
+    this.pulseT = -1;
+    if (this.actions.knock_down) {
+      // real fall: stagger, collapse, settle on the canvas (clip holds the
+      // lying pose via clampWhenFinished)
+      this.play('knock_down', { once: true, fade: 0.18 });
+    } else {
+      // fallback: freeze the pose and pivot rigidly at the feet
+      if (this.current) this.current.paused = true;
+      this.koT = 0;
+    }
   }
 
   victory() {
@@ -229,13 +238,16 @@ export class Fighter3D {
     }
 
     // guard overlay blends in/out smoothly on top of the playing clip;
-    // guardPulse() briefly overdrives it so blocks visibly "catch" the shot
-    const gRate = this.guardTarget > this.guardW ? 7 : 4;
+    // guardPulse() briefly overdrives it so blocks visibly "catch" the shot.
+    // Rise is quick (a guard is a reaction), release relaxes slower.
+    const gRate = this.guardTarget > this.guardW ? 9 : 3.2;
     this.guardW += (this.guardTarget - this.guardW) * Math.min(1, dt * gRate);
     let gw = this.guardW;
     if (this.pulseT >= 0) {
-      if (this.pulseT < 0.4) {
-        gw = Math.min(1.6, gw + Math.sin((Math.PI * this.pulseT) / 0.4) * 0.9);
+      // 0.36s envelope peaking at 0.18s — callers schedule the pulse 0.18s
+      // before the blocked impact so the catch lands exactly on contact
+      if (this.pulseT < 0.36) {
+        gw = Math.min(1.6, gw + Math.sin((Math.PI * this.pulseT) / 0.36) * 0.9);
         this.pulseT += dt;
       } else {
         this.pulseT = -1;
@@ -294,7 +306,8 @@ export class Fighter3D {
     }
     this.pos.y = 0;
 
-    // KO fall: rigid backwards fall pivoting at the feet, slight bounce
+    // procedural KO fall (fallback only — the knock_down clip is the real
+    // path): rigid backwards fall pivoting at the feet, slight bounce
     if (this.koT >= 0 && this.koT < 1.4) {
       this.koT += dt;
       const t = Math.min(this.koT / 0.75, 1);
