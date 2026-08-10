@@ -31,7 +31,9 @@ export const DAVIT = {
   victoryClip: 'flex',
   voice: 'assets/sounds/davit_win.m4a',
   counterSkill: 0.3,
-  stats: { striking: 90, grappling: 85, cardio: 92, chin: 88, speed: 92 },
+  // chin 88→91 after the 30s-round retune: flash KOs weigh more in longer
+  // fights and his chin was the soft target in every drifted pairing
+  stats: { striking: 90, grappling: 85, cardio: 92, chin: 91, speed: 92 },
 };
 
 export const COTNE = {

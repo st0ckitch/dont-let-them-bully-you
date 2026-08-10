@@ -2,9 +2,9 @@ const rand = (a, b) => a + Math.random() * (b - a);
 const pick = arr => arr[Math.floor(Math.random() * arr.length)];
 
 export const ROUNDS = 3;
-export const ROUND_SECONDS = 20;
-const ROUND_RECOVERY = 12; // corner work between rounds
-const DMG_SCALE = 0.5; // Monte-Carlo tuned: ~half the fights reach the judges
+export const ROUND_SECONDS = 30;
+const ROUND_RECOVERY = 18; // corner work between rounds — scaled with the longer rounds
+const DMG_SCALE = 0.38; // Monte-Carlo tuned for 30s rounds: most fights finish, a solid minority reaches the judges
 
 // Each move maps to a real animation clip; impacts fire at normalized clip
 // times. `range` = distance the attacker closes to before striking;
