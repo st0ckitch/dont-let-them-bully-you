@@ -187,6 +187,14 @@ export const MOVES = [
     impacts: [{ at: 0.7, min: 12, max: 19 }],
     w: f => 3 + Math.max(0, f.stats.speed - 86) * 1.1,
   },
+  // ---- Gigi's clip; impact at the trimmed sweep's energy peak
+  {
+    key: 'leg_sweep', label: 'leg sweep', range: 1.2, reach: 1.45, heavy: true,
+    impacts: [{ at: 0.28, min: 12, max: 20 }],
+    // grappling-gated: sweeps are a wrestler's tool (merab picks it up too —
+    // matrix-checked, it nudges his soft pairings up without breaking any)
+    w: f => 3 + Math.max(0, f.stats.grappling - 88) * 1.0,
+  },
 ];
 
 // Dodge clip timing: per-bone angular-velocity analysis puts the head

@@ -38,6 +38,7 @@ const ANIM_FILES = {
   rising_kick: 'assets/anim_rising_kick.glb',
   turn_kick: 'assets/anim_turn_kick.glb',
   muscle_flex: 'assets/anim_muscle_flex.glb',
+  leg_sweep: 'assets/anim_leg_sweep.glb',
 };
 
 // which rig family each clip was authored on (default: athletic)
@@ -46,6 +47,7 @@ const CLIP_SOURCE = {
   punch_combo_4: 'portrait', kung_fu_punch: 'portrait', high_kick: 'portrait',
   punch_combo_3: 'dato', punch_combo_5: 'dato',
   backflip_hooks: 'soso', rising_kick: 'soso', turn_kick: 'soso', muscle_flex: 'soso',
+  leg_sweep: 'gigi',
 };
 
 // Native per-family exports of the same library clip — preferred over
@@ -74,6 +76,8 @@ const TRIM_WINDOWS = {
   knock_down: [1.05, 3.3],
   // backflip lands ~1.5s, hook flurry 3.0-4.0s; dead lead-in/tail cut
   backflip_hooks: [0.5, 4.35],
+  // sweep spins through 0.6-1.0s; cut windup and the long recovery tail
+  leg_sweep: [0.2, 1.9],
 };
 
 // Dodge_and_Counter windows from per-bone angular-velocity analysis:

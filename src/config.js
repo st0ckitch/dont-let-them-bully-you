@@ -112,4 +112,20 @@ export const SOSO = {
   stats: { striking: 89, grappling: 78, cardio: 93, chin: 90, speed: 94 },
 };
 
-export const FIGHTERS = [MERAB, ILIA, DAVIT, COTNE, DATO, LEVAN, DAVID, SOSO];
+export const GIGI = {
+  id: 'gigi', short: 'GIGI', name: 'Gigi Gvaramia', nick: 'The CTO', flag: '🇬🇪',
+  body: 'assets/gigi_body.glb',
+  rig: 'gigi',
+  builtin: 'pod_groove',
+  height: 1.82,
+  victoryClip: 'pod_groove',
+  voice: 'assets/sounds/gigi_win.m4a',
+  // the architect: reads the fight like a system diagram — elite counters
+  // (second only to Dato), sturdy chin, real grappling, a step slower than
+  // the kids. simFight N=3000: 43-57% — feasts on merab (57), the teenage
+  // speed of soso is the one system he can't debug (43).
+  counterSkill: 0.42,
+  stats: { striking: 94, grappling: 89, cardio: 91, chin: 94, speed: 88 },
+};
+
+export const FIGHTERS = [MERAB, ILIA, DAVIT, COTNE, DATO, LEVAN, DAVID, SOSO, GIGI];
