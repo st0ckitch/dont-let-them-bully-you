@@ -161,6 +161,32 @@ export const MOVES = [
     ],
     w: f => 10 + Math.max(0, f.stats.cardio - 84) * 1.4,
   },
+  // ---- Soso's batch; impact `at` values from rotational-energy peaks on the
+  // TRIMMED clip (backflip_hooks plays its [0.5, 4.35] window)
+  {
+    key: 'backflip_hooks', label: 'backflip & hooks', range: 1.1, reach: 1.35, heavy: false,
+    // 3 impacts, not 4: flash KOs roll per hit, and a 4th ticket was enough
+    // to tilt Cotne (powerKO 4) into 62% over the soft-chinned end of the roster
+    impacts: [
+      { at: 0.27, min: 8, max: 14 },
+      { at: 0.78, min: 6, max: 10 },
+      { at: 0.91, min: 6, max: 10 },
+    ],
+    // weights speed-gated, not striking-scaled: striking-scaled versions
+    // handed Cotne (STR 96, powerKO 4) two extra flash-KO vectors and drifted
+    // his merab pairing 43% -> 52% in the matrix rerun
+    w: f => 4 + Math.max(0, f.stats.striking - 90) * 1.0,
+  },
+  {
+    key: 'rising_kick', label: 'rising flying kick', range: 1.4, reach: 1.7, heavy: true,
+    impacts: [{ at: 0.45, min: 14, max: 22 }],
+    w: f => 4 + Math.max(0, f.stats.speed - 88) * 1.3,
+  },
+  {
+    key: 'turn_kick', label: 'step-in turn kick', range: 1.35, reach: 1.6, heavy: true,
+    impacts: [{ at: 0.7, min: 12, max: 19 }],
+    w: f => 3 + Math.max(0, f.stats.speed - 86) * 1.1,
+  },
 ];
 
 // Dodge clip timing: per-bone angular-velocity analysis puts the head

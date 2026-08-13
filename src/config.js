@@ -92,4 +92,19 @@ export const DAVID = {
   stats: { striking: 94, grappling: 82, cardio: 90, chin: 94, speed: 87 },
 };
 
-export const FIGHTERS = [MERAB, ILIA, DAVIT, COTNE, DATO, LEVAN, DAVID];
+export const SOSO = {
+  id: 'soso', short: 'SOSO', name: 'Soso Ananov', nick: 'The 17', flag: '🇬🇪',
+  body: 'assets/soso_body.glb',
+  rig: 'soso',
+  builtin: 'funky_walk',
+  height: 1.78,
+  victoryClip: 'muscle_flex',
+  // teenage prodigy: fastest man in the roster with a bottomless gas tank,
+  // green everywhere else — no grappling, chin still developing. Full
+  // 28-pairing Monte-Carlo (N=3000): 41-59% band, best vs merab (59, speed
+  // kryptonite), worst vs cotne (43, glass chin meets one-punch power).
+  counterSkill: 0.3,
+  stats: { striking: 89, grappling: 78, cardio: 93, chin: 90, speed: 94 },
+};
+
+export const FIGHTERS = [MERAB, ILIA, DAVIT, COTNE, DATO, LEVAN, DAVID, SOSO];

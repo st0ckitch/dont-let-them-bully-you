@@ -10,7 +10,7 @@ const ID_PREFIX = 'dltby-mp-';
 // (fight.js MOVES/TRIM_WINDOWS/DMG_SCALE/rounds, config stats, anim clip
 // surgery). Mismatched cached clients would replay the same seed into
 // different winners with zero errors — the hello handshake refuses instead.
-export const PROTOCOL_VERSION = 2;
+export const PROTOCOL_VERSION = 3; // v3: Soso + 3 new MOVES shift rng consumption
 
 // Extra STUN keeps srflx discovery alive when one provider is slow. The
 // peerjs.com TURN entries mirror the library's defaultConfig (setting config

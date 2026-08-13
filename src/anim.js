@@ -34,6 +34,10 @@ const ANIM_FILES = {
   high_kick: 'assets/anim_high_kick.glb',
   punch_combo_3: 'assets/anim_punch_combo_3.glb',
   punch_combo_5: 'assets/anim_punch_combo_5.glb',
+  backflip_hooks: 'assets/anim_backflip_hooks.glb',
+  rising_kick: 'assets/anim_rising_kick.glb',
+  turn_kick: 'assets/anim_turn_kick.glb',
+  muscle_flex: 'assets/anim_muscle_flex.glb',
 };
 
 // which rig family each clip was authored on (default: athletic)
@@ -41,6 +45,7 @@ const CLIP_SOURCE = {
   uppercut: 'portrait', hook: 'portrait', punch_combo_2: 'portrait',
   punch_combo_4: 'portrait', kung_fu_punch: 'portrait', high_kick: 'portrait',
   punch_combo_3: 'dato', punch_combo_5: 'dato',
+  backflip_hooks: 'soso', rising_kick: 'soso', turn_kick: 'soso', muscle_flex: 'soso',
 };
 
 // Native per-family exports of the same library clip — preferred over
@@ -67,6 +72,8 @@ const TRIM_WINDOWS = {
   kung_fu_punch: [0.5, 4.8],
   counterstrike: [1.3, 3.1],
   knock_down: [1.05, 3.3],
+  // backflip lands ~1.5s, hook flurry 3.0-4.0s; dead lead-in/tail cut
+  backflip_hooks: [0.5, 4.35],
 };
 
 // Dodge_and_Counter windows from per-bone angular-velocity analysis:
