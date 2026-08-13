@@ -482,6 +482,83 @@ body.menuOpen #topbar, body.menuOpen #commentaryWrap { display: none; }
   color: var(--text-dim);
 }
 
+/* ---------- multiplayer lobby bar ---------- */
+#netBar { display: flex; align-items: center; justify-content: center; }
+#netIdle, #netLive { display: flex; align-items: center; gap: 8px; }
+#netIdle.hidden, #netLive.hidden { display: none; }
+.netBtn {
+  pointer-events: auto;
+  font-family: var(--barlow);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: #dfe4f0;
+  background: linear-gradient(160deg, #2a2f3d, #171b26);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 7px 14px 6px;
+  cursor: pointer;
+  transition: filter 0.15s ease, border-color 0.15s ease;
+}
+.netBtn:hover { filter: brightness(1.25); border-color: rgba(255, 255, 255, 0.35); }
+.netBtn.netLeave { color: #ff8089; }
+#netMicBtn.on { border-color: #2ee06a; box-shadow: 0 0 10px rgba(46, 224, 106, 0.4); }
+#netMicBtn.muted { opacity: 0.55; }
+#netMicBtn.blocked { opacity: 0.35; cursor: default; }
+.netOr { font-size: 11px; letter-spacing: 1px; color: var(--text-dim); }
+#netCodeInput {
+  width: 74px;
+  padding: 6px 8px 5px;
+  font-family: var(--anton);
+  font-size: 15px;
+  letter-spacing: 4px;
+  text-align: center;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  outline: none;
+}
+#netCodeInput:focus { border-color: var(--gold); }
+#netStatus {
+  font-weight: 700;
+  font-size: 12.5px;
+  letter-spacing: 1.5px;
+  color: var(--gold-soft);
+  text-shadow: 0 2px 8px #000;
+}
+/* the big shareable code while waiting for the opponent */
+#netStatus b { font-family: var(--anton); font-size: 17px; letter-spacing: 5px; color: #fff; vertical-align: -1px; }
+.mpready {
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: #2ee06a;
+  text-shadow: 0 0 12px rgba(46, 224, 106, 0.6);
+}
+.mpready.hidden { display: none; }
+#menuFightBtn:disabled { filter: grayscale(0.7) brightness(0.6); cursor: default; animation: none; transform: none; }
+
+/* floating mic toggle while an online fight runs */
+#gameMicBtn {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  z-index: 26;
+  pointer-events: auto;
+  width: 46px;
+  height: 46px;
+  font-size: 20px;
+  line-height: 1;
+  background: linear-gradient(160deg, var(--ink), var(--ink-soft));
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  cursor: pointer;
+}
+#gameMicBtn.hidden { display: none; }
+#gameMicBtn.muted { opacity: 0.55; }
+#gameMicBtn.blocked { opacity: 0.35; cursor: default; }
+
 /* ---------- banner ---------- */
 #banner {
   position: absolute;

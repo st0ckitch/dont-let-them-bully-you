@@ -62,6 +62,7 @@
       </div>
     </div>
     <div id="confetti"></div>
+    <button id="gameMicBtn" class="hidden" title="Toggle microphone">🎤</button>
     <div id="menu" class="hidden">
       <div id="menuTitle">CHOOSE YOUR FIGHTERS</div>
       <div id="menuPlates">
@@ -70,6 +71,7 @@
           <span class="mpname"></span>
           <span class="mpnick"></span>
           <span class="mpstat"></span>
+          <span class="mpready hidden">READY ✓</span>
         </button>
         <div class="mvs">VS</div>
         <button class="mplate mpred" id="mplateB">
@@ -77,10 +79,24 @@
           <span class="mpname"></span>
           <span class="mpnick"></span>
           <span class="mpstat"></span>
+          <span class="mpready hidden">READY ✓</span>
         </button>
       </div>
       <div id="menuSpacer"></div>
       <div id="menuBottom">
+        <div id="netBar">
+          <div id="netIdle">
+            <button class="netBtn" id="netHostBtn">CREATE LOBBY</button>
+            <span class="netOr">or</span>
+            <input id="netCodeInput" inputmode="numeric" maxlength="4" placeholder="CODE" aria-label="Lobby code" />
+            <button class="netBtn" id="netJoinBtn">JOIN</button>
+          </div>
+          <div id="netLive" class="hidden">
+            <span id="netStatus"></span>
+            <button class="netBtn" id="netMicBtn" title="Toggle microphone">🎤</button>
+            <button class="netBtn netLeave" id="netLeaveBtn">LEAVE</button>
+          </div>
+        </div>
         <div id="rosterBar"></div>
         <button id="menuFightBtn">FIGHT</button>
         <div id="menuHint">3 rounds × 30 seconds — win by KO, flash KO, or the judges' scorecards</div>
@@ -92,6 +108,7 @@
       <div id="loadText">Loading arena…</div>
     </div>
   </div>
+  <script src="./vendor/peerjs.min.js"></script>
   <script type="module" src="./src/main.js"></script>
 </body>
 </html>

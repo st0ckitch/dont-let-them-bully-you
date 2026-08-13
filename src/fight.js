@@ -1,5 +1,22 @@
-const rand = (a, b) => a + Math.random() * (b - a);
-const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+// All sim randomness flows through rng() so multiplayer can seed it: both
+// clients replay the identical fight (decisions, damage, commentary) from a
+// shared 32-bit seed. Unseeded local play keeps Math.random. Determinism also
+// requires the fixed-step engine updates in main.js — variable dt would let
+// clients consume the stream at different sim times.
+let rng = Math.random;
+export function setFightRng(fn) { rng = fn || Math.random; }
+export function seededRng(seed) {
+  let s = seed | 0;
+  return () => {
+    s = (s + 0x6D2B79F5) | 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const rand = (a, b) => a + rng() * (b - a);
+const pick = arr => arr[Math.floor(rng() * arr.length)];
 
 export const ROUNDS = 3;
 export const ROUND_SECONDS = 30;
@@ -178,7 +195,7 @@ export function pickAttackerProb(a, b) {
 
 export function pickMove(stats) {
   const ws = MOVES.map(m => m.w({ stats }));
-  let r = Math.random() * ws.reduce((s, w) => s + w, 0);
+  let r = rng() * ws.reduce((s, w) => s + w, 0);
   for (let i = 0; i < MOVES.length; i++) {
     r -= ws[i];
     if (r <= 0) return MOVES[i];
@@ -202,10 +219,10 @@ export function flashKOProb(move, out, defStats, power = 1) {
 export function resolveImpactMath(move, impact, atkStats, defStats, bonus = 0) {
   const p = Math.min(0.9, Math.max(0.3,
     0.58 + bonus + (atkStats.striking - 88) * 0.008 - (defStats.speed - 88) * 0.005));
-  const r = Math.random();
+  const r = rng();
   if (r < p) {
     let dmg = rand(impact.min, impact.max);
-    const crit = Math.random() < 0.12;
+    const crit = rng() < 0.12;
     if (crit) dmg *= 1.6;
     dmg *= (182 - defStats.chin) / 92;
     dmg *= DMG_SCALE;
@@ -227,11 +244,11 @@ export function simFight(cfgA, cfgB) {
     const rd = { a: 0, b: 0 };
     let tLeft = ROUND_SECONDS;
     while (tLeft > 0) {
-      tLeft -= 2 + Math.random() * 1.5;
-      const aAtt = Math.random() < pickAttackerProb(a.stats, b.stats);
+      tLeft -= 2 + rng() * 1.5;
+      const aAtt = rng() < pickAttackerProb(a.stats, b.stats);
       const atk = aAtt ? a : b, def = aAtt ? b : a;
       const akey = aAtt ? 'a' : 'b', dkey = aAtt ? 'b' : 'a';
-      const trade = Math.random() < tradeProb(def.stats);
+      const trade = rng() < tradeProb(def.stats);
       const move = pickMove(atk.stats);
       let missRolled = false;
       for (const imp of move.impacts) {
@@ -239,15 +256,15 @@ export function simFight(cfgA, cfgB) {
         def.hp -= r.dmg;
         rd[akey] += r.dmg;
         totals[akey] += r.dmg;
-        if (def.hp > 0 && r.kind === 'hit' && Math.random() < flashKOProb(move, r, def.stats, atk.powerKO)) def.hp = 0;
+        if (def.hp > 0 && r.kind === 'hit' && rng() < flashKOProb(move, r, def.stats, atk.powerKO)) def.hp = 0;
         if (def.hp <= 0) return koWin(atk);
         // mirror the live engine: only the FIRST miss of an exchange can counter, never in a trade
-        if (!trade && r.kind === 'miss' && !missRolled && (missRolled = true) && Math.random() < (def.counterSkill || 0)) {
+        if (!trade && r.kind === 'miss' && !missRolled && (missRolled = true) && rng() < (def.counterSkill || 0)) {
           const c = resolveImpactMath(COUNTER_MOVE, COUNTER_MOVE.impacts[0], def.stats, atk.stats, counterBonus(atk.stats));
           atk.hp -= c.dmg;
           rd[dkey] += c.dmg;
           totals[dkey] += c.dmg;
-          if (atk.hp > 0 && c.kind === 'hit' && Math.random() < flashKOProb(COUNTER_MOVE, c, atk.stats, def.powerKO)) atk.hp = 0;
+          if (atk.hp > 0 && c.kind === 'hit' && rng() < flashKOProb(COUNTER_MOVE, c, atk.stats, def.powerKO)) atk.hp = 0;
           if (atk.hp <= 0) return koWin(def);
           break;
         }
@@ -259,7 +276,7 @@ export function simFight(cfgA, cfgB) {
           atk.hp -= r.dmg;
           rd[dkey] += r.dmg;
           totals[dkey] += r.dmg;
-          if (atk.hp > 0 && r.kind === 'hit' && Math.random() < flashKOProb(move2, r, atk.stats, def.powerKO)) atk.hp = 0;
+          if (atk.hp > 0 && r.kind === 'hit' && rng() < flashKOProb(move2, r, atk.stats, def.powerKO)) atk.hp = 0;
           if (atk.hp <= 0) return koWin(def);
         }
       }
@@ -399,8 +416,8 @@ export class Engine {
     this.strafe.t -= dt;
     if (this.strafe.t <= 0) {
       this.strafe.t = rand(1.5, 3.5);
-      if (Math.random() < 0.5) this.strafe.a *= -1;
-      if (Math.random() < 0.5) this.strafe.b *= -1;
+      if (rng() < 0.5) this.strafe.a *= -1;
+      if (rng() < 0.5) this.strafe.b *= -1;
     }
     for (const [f, dir] of [[this.a, this.strafe.a], [this.b, this.strafe.b]]) {
       const tx = -(f.pos.z) * dir, tz = f.pos.x * dir;
@@ -420,7 +437,7 @@ export class Engine {
 
   _beginExchange() {
     const pA = pickAttackerProb(this.a.stats, this.b.stats);
-    this.atk = Math.random() < pA ? this.a : this.b;
+    this.atk = rng() < pA ? this.a : this.b;
     this.def = this.atk === this.a ? this.b : this.a;
     this.move = pickMove(this.atk.stats);
     this.phase = 'approach';
@@ -469,7 +486,7 @@ export class Engine {
         // Pick the reaction that can PEAK exactly when the strike whiffs:
         // the head-slip clip needs DODGE_PEAK of lead time, so early impacts
         // fall back to the procedural lean-back (peaks 0.4s after trigger).
-        const useClip = missT >= DODGE_PEAK && Math.random() < 0.5;
+        const useClip = missT >= DODGE_PEAK && rng() < 0.5;
         this.after(Math.max(0, missT - (useClip ? DODGE_PEAK : 0.4)), () => {
           if (this.phase !== 'strike' || this.state !== 'fighting' || def.state === 'ko') return;
           if (def.currentKey && !['idle', 'walk', 'run'].includes(def.currentKey)) return;
@@ -485,7 +502,7 @@ export class Engine {
           }
         });
         // the dodger may fire back — counter specialists thrive here
-        if (Math.random() < (def.cfg.counterSkill || 0)) {
+        if (rng() < (def.cfg.counterSkill || 0)) {
           strike.counterAt = missT + 0.12;
         }
       }
@@ -519,7 +536,7 @@ export class Engine {
     this.activeStrikes = [];
     const { atk, def } = this;
     // the defender may abandon defense and let one fly at the same time
-    const trade = def.state === 'idle' && Math.random() < tradeProb(def.stats);
+    const trade = def.state === 'idle' && rng() < tradeProb(def.stats);
     if (trade) {
       def.defend(false);
       this._launchStrike(atk, def, this.move, { bonus: 0.15, defense: false });
@@ -577,7 +594,7 @@ export class Engine {
     this.victim = victim;
     this.counterT = 0;
     const variants = COUNTER_CLIPS.filter(v => counterer.actions[v.key]);
-    const v = variants.length ? variants[Math.floor(Math.random() * variants.length)] : COUNTER_CLIPS[0];
+    const v = variants.length ? variants[Math.floor(rng() * variants.length)] : COUNTER_CLIPS[0];
     this.counterAt = v.at;
     this.counterDur = counterer.clipDuration(v.key);
     this.counterFired = false;
@@ -638,7 +655,7 @@ export class Engine {
         return;
       }
       // the equalizer: any clean shot can switch the lights off
-      if (Math.random() < flashKOProb(move, out, def.stats, atk.cfg.powerKO || 1)) {
+      if (rng() < flashKOProb(move, out, def.stats, atk.cfg.powerKO || 1)) {
         def.hp = 0;
         this.cb.onHP();
         this.cb.onImpact(true, true, /kick|roundhouse|knee/.test(move.key) ? 'kick' : 'punch');

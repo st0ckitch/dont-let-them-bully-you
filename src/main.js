@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import { FIGHTERS } from './config.js';
 import { loadAssets } from './anim.js';
 import { Fighter3D } from './fighter3d.js';
-import { Engine, simFight } from './fight.js';
+import { Engine, simFight, setFightRng, seededRng } from './fight.js';
+import { Net } from './net.js';
 
 const canvas = document.querySelector('#scene');
 // perf tiers: phones get a lower pixel-ratio cap and smaller shadow maps;
@@ -620,7 +621,9 @@ const engineCallbacks = {
   onBell: () => fx.bell(),
 };
 
-function startMatch(idA, idB) {
+function startMatch(idA, idB, seed = null) {
+  // multiplayer passes a shared seed: both clients replay the identical fight
+  setFightRng(seed === null ? null : seededRng(seed));
   for (const f of Object.values(fighters)) f.root.visible = false;
   fighterA = fighters[idA];
   fighterB = fighters[idB];
@@ -640,6 +643,7 @@ function startMatch(idA, idB) {
   fx.startMusic();
   engine.start();
   updateHP();
+  updateNetUi(); // reveal the in-fight mic toggle in multiplayer
   window.__fight = { engine, fighters, fighterA, fighterB, simFight };
 }
 
@@ -720,10 +724,12 @@ function openMenu() {
   fighterA = null;
   fighterB = null;
   menuOpen = true;
+  readyA = readyB = false; // a fresh select round always re-arms READY
   document.body.classList.add('menuOpen');
   $('#menu').classList.remove('hidden');
   refreshMenu();
   updateMenuPreview();
+  updateNetUi();
 }
 
 function buildMenu(thumbs) {
@@ -735,6 +741,18 @@ function buildMenu(thumbs) {
   document.querySelectorAll('.rtile').forEach(el =>
     el.addEventListener('click', () => {
       const id = el.dataset.id;
+      if (net) {
+        // online: you only ever pick your own corner, and picking un-readies you
+        const other = mySide === 'A' ? selB : selA;
+        if (id === other) return;
+        if (mySide === 'A') { selA = id; readyA = false; }
+        else { selB = id; readyB = false; }
+        net.send({ t: 'pick', side: mySide, id });
+        refreshMenu();
+        updateNetUi();
+        updateMenuPreview(mySide);
+        return;
+      }
       if (activeSide === 'A') {
         selA = id;
         if (selB === id) selB = FIGHTERS.find(c => c.id !== id).id;
@@ -748,8 +766,8 @@ function buildMenu(thumbs) {
       updateMenuPreview(changed);
     }),
   );
-  $('#mplateA').addEventListener('click', () => { activeSide = 'A'; refreshMenu(); });
-  $('#mplateB').addEventListener('click', () => { activeSide = 'B'; refreshMenu(); });
+  $('#mplateA').addEventListener('click', () => { if (!net) { activeSide = 'A'; refreshMenu(); } });
+  $('#mplateB').addEventListener('click', () => { if (!net) { activeSide = 'B'; refreshMenu(); } });
 }
 
 function refreshMenu() {
@@ -764,27 +782,235 @@ function refreshMenu() {
     p.querySelector('.mpnick').textContent = cfg.nick.toUpperCase();
     p.querySelector('.mpstat').textContent =
       `STR ${cfg.stats.striking} · GRP ${cfg.stats.grappling} · SPD ${cfg.stats.speed} · CAR ${cfg.stats.cardio}`;
+    p.querySelector('.mpready').classList.toggle('hidden', !(netConnected() && (side === 'A' ? readyA : readyB)));
     p.classList.toggle('active', activeSide === side);
   }
 }
 
+// ---------- Multiplayer (PeerJS: DataChannel for the lobby, WebRTC voice) ----------
+// Host = blue corner, guest = red. Each client only picks its own side; the
+// fight itself is the seeded deterministic sim, so only {seed, picks} travel.
+let net = null;
+let mySide = 'A';
+let readyA = false;
+let readyB = false;
+let remoteAudio = null;
+
+const netConnected = () => !!net?.conn?.open;
+const HINT_DEFAULT = "3 rounds × 30 seconds — win by KO, flash KO, or the judges' scorecards";
+
+const netCallbacks = {
+  onOpen: () => updateNetUi(),
+  onConnect: () => {
+    readyA = readyB = false;
+    net.send({ t: 'hello', side: mySide, pick: mySide === 'A' ? selA : selB, ready: false });
+    fx.bell();
+    refreshMenu();
+    updateNetUi();
+  },
+  onMsg: d => onNetMsg(d),
+  onClose: () => teardownNet('OPPONENT LEFT THE LOBBY'),
+  onError: err => {
+    teardownNet(err.type === 'no-lobby' ? 'NO LOBBY WITH THAT CODE' : 'CONNECTION FAILED — TRY AGAIN');
+  },
+  onRemoteStream: stream => {
+    remoteAudio = new Audio();
+    remoteAudio.srcObject = stream;
+    remoteAudio.autoplay = true;
+    remoteAudio.play().catch(() => {});
+  },
+  onMicState: () => updateNetUi(),
+};
+
+function onNetMsg(d) {
+  switch (d.t) {
+    case 'hello':
+    case 'pick': {
+      const id = d.pick ?? d.id;
+      if (d.side === 'A') { selA = id; readyA = d.ready ?? false; }
+      else { selB = id; readyB = d.ready ?? false; }
+      if (selA === selB) { // never let both corners hold the same Fighter3D
+        const alt = FIGHTERS.find(c => c.id !== id).id;
+        if (d.side === 'A') selB = alt; else selA = alt;
+      }
+      refreshMenu();
+      updateNetUi();
+      if (menuOpen) updateMenuPreview(d.side);
+      break;
+    }
+    case 'ready':
+      if (d.side === 'A') readyA = d.ready; else readyB = d.ready;
+      refreshMenu();
+      updateNetUi();
+      maybeHostStart();
+      break;
+    case 'start':
+      selA = d.a;
+      selB = d.b;
+      fx.init();
+      startMatch(d.a, d.b, d.seed);
+      break;
+    case 'rematch':
+      doRematch(d.seed);
+      break;
+    case 'rematchReq':
+      if (net?.isHost) {
+        const seed = (Math.random() * 0x7fffffff) | 0;
+        net.send({ t: 'rematch', seed });
+        doRematch(seed);
+      }
+      break;
+    case 'menu':
+      closeBannerToMenu();
+      break;
+  }
+}
+
+function maybeHostStart() {
+  if (net?.isHost && netConnected() && readyA && readyB) {
+    const seed = (Math.random() * 0x7fffffff) | 0;
+    net.send({ t: 'start', a: selA, b: selB, seed });
+    startMatch(selA, selB, seed);
+  }
+}
+
+function teardownNet(message = null) {
+  net?.destroy();
+  net = null;
+  try { remoteAudio?.pause(); } catch { /* ignore */ }
+  remoteAudio = null;
+  readyA = readyB = false;
+  mySide = 'A';
+  refreshMenu();
+  updateNetUi();
+  if (message) $('#menuHint').textContent = message;
+}
+
+function updateNetUi() {
+  $('#netIdle').classList.toggle('hidden', !!net);
+  $('#netLive').classList.toggle('hidden', !net);
+  const fight = $('#menuFightBtn');
+  if (net) {
+    $('#netStatus').innerHTML = netConnected()
+      ? `LIVE — YOU ARE ${mySide === 'A' ? 'BLUE' : 'RED'}`
+      : net.isHost && net.code
+        ? `LOBBY <b>${net.code}</b> — SHARE THIS CODE`
+        : 'CONNECTING…';
+    const mic = $('#netMicBtn');
+    mic.className = `netBtn ${net.micState}`;
+    mic.textContent = net.micState === 'muted' ? '🔇' : '🎤';
+    mic.title = net.micState === 'blocked' ? 'Microphone blocked by the browser' : 'Toggle microphone';
+  }
+  const gmic = $('#gameMicBtn');
+  if (net && !menuOpen) {
+    gmic.textContent = net.micState === 'muted' ? '🔇' : '🎤';
+    gmic.className = net.micState;
+  } else {
+    gmic.className = 'hidden';
+  }
+  if (!net) {
+    fight.disabled = false;
+    fight.textContent = 'FIGHT';
+    $('#menuHint').textContent = HINT_DEFAULT;
+  } else if (!netConnected()) {
+    fight.disabled = true;
+    fight.textContent = 'WAITING…';
+    $('#menuHint').textContent = 'your friend joins with the code — they fight out of the red corner';
+  } else {
+    fight.disabled = false;
+    const myReady = mySide === 'A' ? readyA : readyB;
+    fight.textContent = myReady ? 'CANCEL READY' : 'READY';
+    $('#menuHint').textContent = readyA && readyB
+      ? 'STARTING…'
+      : 'both corners must press READY — the mic is live while you pick';
+  }
+}
+
+function doRematch(seed) {
+  $('#banner').classList.add('hidden');
+  $('#confetti').innerHTML = '';
+  setFightRng(seed == null ? null : seededRng(seed));
+  fx.bell();
+  fx.startMusic();
+  engine.start();
+}
+
+function closeBannerToMenu() {
+  $('#banner').classList.add('hidden');
+  $('#confetti').innerHTML = '';
+  openMenu();
+}
+
+$('#netHostBtn').addEventListener('click', () => {
+  fx.init();
+  teardownNet();
+  net = new Net(netCallbacks);
+  mySide = 'A';
+  activeSide = 'A';
+  net.host();
+  updateNetUi();
+});
+
+$('#netJoinBtn').addEventListener('click', () => {
+  fx.init();
+  const code = $('#netCodeInput').value.trim();
+  if (!/^\d{4}$/.test(code)) {
+    $('#menuHint').textContent = 'ENTER THE 4-DIGIT LOBBY CODE';
+    return;
+  }
+  teardownNet();
+  net = new Net(netCallbacks);
+  mySide = 'B';
+  activeSide = 'B';
+  net.join(code);
+  refreshMenu();
+  updateNetUi();
+});
+
+$('#netCodeInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') $('#netJoinBtn').click();
+});
+
+const toggleMic = () => {
+  if (net && net.micState !== 'blocked' && net.micState !== 'off') net.toggleMute();
+};
+$('#netMicBtn').addEventListener('click', toggleMic);
+$('#gameMicBtn').addEventListener('click', toggleMic);
+
+$('#netLeaveBtn').addEventListener('click', () => teardownNet('LEFT THE LOBBY'));
+
 $('#menuFightBtn').addEventListener('click', () => {
   fx.init();
+  if (net) {
+    if (!netConnected()) return;
+    if (mySide === 'A') readyA = !readyA; else readyB = !readyB;
+    net.send({ t: 'ready', side: mySide, ready: mySide === 'A' ? readyA : readyB });
+    refreshMenu();
+    updateNetUi();
+    maybeHostStart();
+    return;
+  }
   startMatch(selA, selB);
 });
 
 $('#rematchBtn').addEventListener('click', () => {
-  $('#banner').classList.add('hidden');
-  $('#confetti').innerHTML = '';
-  fx.bell();
-  fx.startMusic();
-  engine.start();
+  if (net) {
+    if (!netConnected()) return;
+    if (net.isHost) {
+      const seed = (Math.random() * 0x7fffffff) | 0;
+      net.send({ t: 'rematch', seed });
+      doRematch(seed);
+    } else {
+      net.send({ t: 'rematchReq' }); // host owns the seed
+    }
+    return;
+  }
+  doRematch(null);
 });
 
 $('#changeBtn').addEventListener('click', () => {
-  $('#banner').classList.add('hidden');
-  $('#confetti').innerHTML = '';
-  openMenu();
+  if (net && netConnected()) net.send({ t: 'menu' });
+  closeBannerToMenu();
 });
 
 // ---------- Async load ----------
@@ -827,6 +1053,8 @@ loadAssets(FIGHTERS, (loaded, total) => {
 
 // ---------- Loop ----------
 const clock = new THREE.Clock();
+const SIM_STEP = 1 / 60;
+let simAcc = 0;
 let radius = 4.6;
 let camY = 2.45;
 
@@ -852,9 +1080,16 @@ renderer.setAnimationLoop(() => {
   const t = clock.elapsedTime;
   autoQuality(rawDt * 1000, t);
 
-  engine?.update(dt);
-  for (const f of Object.values(fighters)) {
-    if (f.root.visible) f.update(dt);
+  // Fixed-step sim: seeded multiplayer fights must consume the rng stream at
+  // identical sim times on both clients, so the engine and fighters advance
+  // in 1/60s quanta regardless of the device's frame rate.
+  simAcc = Math.min(simAcc + dt, 0.2);
+  while (simAcc >= SIM_STEP) {
+    simAcc -= SIM_STEP;
+    engine?.update(SIM_STEP);
+    for (const f of Object.values(fighters)) {
+      if (f.root.visible) f.update(SIM_STEP);
+    }
   }
 
   if (menuOpen) {
