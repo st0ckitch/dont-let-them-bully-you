@@ -335,11 +335,14 @@ html, body {
   align-items: center;
   justify-content: center;
   gap: 22px;
+  /* safe-area padding so the FIGHT button clears iOS home indicators */
+  padding: max(14px, env(safe-area-inset-top)) 14px max(14px, env(safe-area-inset-bottom));
   background: radial-gradient(circle, rgba(4, 6, 12, 0.55), rgba(4, 6, 12, 0.92));
   backdrop-filter: blur(8px);
   pointer-events: auto;
 }
 #menu.hidden { display: none; }
+#menuTitle, #menuFightBtn, #menuHint { flex: 0 0 auto; }
 #menuTitle {
   font-family: var(--anton);
   font-style: italic;
@@ -347,10 +350,19 @@ html, body {
   letter-spacing: 4px;
   text-shadow: 0 0 34px rgba(210, 10, 10, 0.45);
 }
+/* the columns own the leftover height; each roster scrolls inside its column
+   so the FIGHT button below can never be pushed off-screen */
 #menuCols {
   display: flex;
-  align-items: flex-start;
+  align-items: stretch;
   gap: 26px;
+  flex: 0 1 auto;
+  min-height: 0;
+}
+.mcol {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 .mvs {
   align-self: center;
@@ -369,7 +381,20 @@ html, body {
 }
 .mblue .mside { color: #7ea2ff; }
 .mred .mside { color: #ff8089; }
-.mpick { display: flex; flex-direction: column; gap: 10px; }
+.mpick {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 2px 2px 6px;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+.fcard { flex: 0 0 auto; }
 .fcard {
   pointer-events: auto;
   display: flex;
@@ -519,4 +544,40 @@ html, body {
   .skill span { width: 28px; font-size: 10px; }
   .skill b { width: 18px; }
   #commentary { font-size: 16px; }
+
+  /* fighter select: tighter cards, both rosters fully on screen and
+     scrollable, FIGHT always visible above the home indicator */
+  #menu { gap: 12px; }
+  #menuTitle { font-size: 21px; letter-spacing: 2px; }
+  #menuCols { gap: 8px; width: 100%; justify-content: center; }
+  .mvs { font-size: 18px; }
+  .mside { font-size: 11px; letter-spacing: 2px; margin-bottom: 7px; }
+  .fcard {
+    width: 42vw;
+    padding: 7px 10px 8px;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    column-gap: 8px;
+    align-items: center;
+  }
+  .fcard .fcflag { font-size: 15px; grid-row: 1 / span 3; }
+  .fcard .fcname { font-size: 15px; letter-spacing: 1px; }
+  .fcard .fcnick { font-size: 9px; letter-spacing: 1.4px; }
+  .fcard .fcstat { font-size: 9.5px; letter-spacing: 0.4px; white-space: nowrap; }
+  #menuFightBtn {
+    width: min(92vw, 360px);
+    padding: 15px 0 13px;
+    font-size: 22px;
+    letter-spacing: 5px;
+  }
+  #menuHint { font-size: 11px; text-align: center; }
+}
+
+/* landscape phones: shrink the chrome so the rosters keep real height */
+@media (max-height: 450px) {
+  #menu { gap: 8px; }
+  #menuTitle { font-size: 19px; letter-spacing: 2px; }
+  .mside { margin-bottom: 4px; }
+  #menuFightBtn { padding: 10px 44px 9px 50px; font-size: 18px; letter-spacing: 4px; }
+  #menuHint { display: none; }
 }
