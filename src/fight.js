@@ -421,7 +421,10 @@ export class Engine {
     }
     for (const [f, dir] of [[this.a, this.strafe.a], [this.b, this.strafe.b]]) {
       const tx = -(f.pos.z) * dir, tz = f.pos.x * dir;
-      const len = Math.hypot(tx, tz) || 1;
+      // sqrt not hypot: hypot is implementation-approximated and may differ
+      // by an ulp across JS engines — positions feed range/reach decisions,
+      // and seeded multiplayer replays must stay bit-identical cross-device
+      const len = Math.sqrt(tx * tx + tz * tz) || 1;
       f.pos.x += (tx / len) * 0.22 * dt;
       f.pos.z += (tz / len) * 0.22 * dt;
     }

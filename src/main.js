@@ -3,7 +3,7 @@ import { FIGHTERS } from './config.js';
 import { loadAssets } from './anim.js';
 import { Fighter3D } from './fighter3d.js';
 import { Engine, simFight, setFightRng, seededRng } from './fight.js';
-import { Net } from './net.js';
+import { Net, PROTOCOL_VERSION } from './net.js';
 
 const canvas = document.querySelector('#scene');
 // perf tiers: phones get a lower pixel-ratio cap and smaller shadow maps;
@@ -623,7 +623,8 @@ const engineCallbacks = {
 
 function startMatch(idA, idB, seed = null) {
   // multiplayer passes a shared seed: both clients replay the identical fight
-  setFightRng(seed === null ? null : seededRng(seed));
+  setFightRng(seed == null ? null : seededRng(seed));
+  readyA = readyB = false; // a READY toggle racing the start must not fire a second one
   for (const f of Object.values(fighters)) f.root.visible = false;
   fighterA = fighters[idA];
   fighterB = fighters[idB];
@@ -794,30 +795,83 @@ let net = null;
 let mySide = 'A';
 let readyA = false;
 let readyB = false;
-let remoteAudio = null;
 
 const netConnected = () => !!net?.conn?.open;
 const HINT_DEFAULT = "3 rounds × 30 seconds — win by KO, flash KO, or the judges' scorecards";
+
+// One persistent, DOM-attached element for the opponent's voice: iOS Safari
+// refuses audio on detached elements, and its autoplay policy blocks play()
+// outside a gesture unless the page holds a live mic capture — which it
+// doesn't when the user tapped "Don't Allow". The CREATE/JOIN tap pre-unlocks
+// the element; if play() is still refused, the next tap anywhere retries.
+const remoteAudioEl = document.createElement('audio');
+remoteAudioEl.autoplay = true;
+remoteAudioEl.setAttribute('playsinline', '');
+document.body.appendChild(remoteAudioEl);
+
+function unlockRemoteAudio() { // must be called from inside a tap handler
+  remoteAudioEl.muted = true;
+  remoteAudioEl.play().catch(() => {});
+  remoteAudioEl.pause();
+  remoteAudioEl.muted = false;
+}
+
+function tryPlayRemote() {
+  remoteAudioEl.play().catch(() => {
+    document.addEventListener('pointerup', () => remoteAudioEl.play().catch(() => {}), { once: true });
+  });
+}
+
+// mid-fight the menu (and #menuHint) is hidden — surface network events
+// through the commentary lower-third instead
+function netToast(message) {
+  const el = $('#commentary');
+  el.textContent = `📵 ${message}`;
+  el.classList.remove('pop');
+  void el.offsetWidth;
+  el.classList.add('pop');
+}
 
 const netCallbacks = {
   onOpen: () => updateNetUi(),
   onConnect: () => {
     readyA = readyB = false;
-    net.send({ t: 'hello', side: mySide, pick: mySide === 'A' ? selA : selB, ready: false });
+    net.send({ t: 'hello', v: PROTOCOL_VERSION, side: mySide, pick: mySide === 'A' ? selA : selB, ready: false });
     fx.bell();
     refreshMenu();
     updateNetUi();
   },
   onMsg: d => onNetMsg(d),
-  onClose: () => teardownNet('OPPONENT LEFT THE LOBBY'),
+  onClose: () => {
+    readyA = readyB = false;
+    if (net?.isHost) {
+      // guest dropped: keep the lobby registered on the same code for a rejoin
+      if (!menuOpen) netToast('OPPONENT DISCONNECTED');
+      else $('#menuHint').textContent = 'OPPONENT DISCONNECTED — LOBBY STILL OPEN, SAME CODE';
+      refreshMenu();
+      updateNetUi();
+    } else {
+      teardownNet('OPPONENT LEFT THE LOBBY');
+    }
+  },
   onError: err => {
-    teardownNet(err.type === 'no-lobby' ? 'NO LOBBY WITH THAT CODE' : 'CONNECTION FAILED — TRY AGAIN');
+    const MESSAGES = {
+      'no-lobby': 'NO LOBBY WITH THAT CODE',
+      'connect-timeout': 'COULD NOT REACH THE OPPONENT — ONE NETWORK IS BLOCKING P2P, TRY WIFI',
+      'negotiation-failed': 'COULD NOT REACH THE OPPONENT — ONE NETWORK IS BLOCKING P2P, TRY WIFI',
+      network: 'LOBBY SERVER UNREACHABLE — CHECK CONNECTION AND TRY AGAIN',
+      'server-error': 'LOBBY SERVER OVERLOADED — TRY AGAIN IN A MINUTE',
+      'socket-error': 'LOBBY SERVER DROPPED THE LINE — TRY AGAIN',
+      'socket-closed': 'LOBBY SERVER DROPPED THE LINE — TRY AGAIN',
+    };
+    teardownNet(MESSAGES[err.type] || 'CONNECTION FAILED — TRY AGAIN');
+  },
+  onRetry: (n, max) => {
+    $('#netStatus').textContent = `RECONNECTING… (${n}/${max})`;
   },
   onRemoteStream: stream => {
-    remoteAudio = new Audio();
-    remoteAudio.srcObject = stream;
-    remoteAudio.autoplay = true;
-    remoteAudio.play().catch(() => {});
+    remoteAudioEl.srcObject = stream;
+    tryPlayRemote();
   },
   onMicState: () => updateNetUi(),
 };
@@ -826,31 +880,47 @@ function onNetMsg(d) {
   switch (d.t) {
     case 'hello':
     case 'pick': {
+      // stale-cache guard: a mismatched build replays the same seed into a
+      // DIFFERENT fight with zero errors — refuse loudly instead
+      if (d.t === 'hello' && d.v !== PROTOCOL_VERSION) {
+        net?.send({ t: 'badver' });
+        teardownNet('GAME VERSIONS DIFFER — RELOAD THE PAGE ON BOTH PHONES');
+        break;
+      }
       const id = d.pick ?? d.id;
       if (d.side === 'A') { selA = id; readyA = d.ready ?? false; }
       else { selB = id; readyB = d.ready ?? false; }
-      if (selA === selB) { // never let both corners hold the same Fighter3D
-        const alt = FIGHTERS.find(c => c.id !== id).id;
-        if (d.side === 'A') selB = alt; else selA = alt;
+      if (selA === selB) {
+        // simultaneous same-pick: side B yields on BOTH ends, and the alt
+        // derives from the colliding id — crossed corrections converge
+        selB = FIGHTERS.find(c => c.id !== selA).id;
+        readyB = false;
+        net?.send({ t: 'pick', side: 'B', id: selB });
       }
       refreshMenu();
       updateNetUi();
       if (menuOpen) updateMenuPreview(d.side);
       break;
     }
+    case 'badver':
+      teardownNet('GAME VERSIONS DIFFER — RELOAD THE PAGE ON BOTH PHONES');
+      break;
     case 'ready':
+      if (!menuOpen) break; // stale toggle arriving mid-fight must not restart the match
       if (d.side === 'A') readyA = d.ready; else readyB = d.ready;
       refreshMenu();
       updateNetUi();
       maybeHostStart();
       break;
     case 'start':
+      if (typeof d.seed !== 'number') { teardownNet('GAME VERSIONS DIFFER — RELOAD THE PAGE ON BOTH PHONES'); break; }
       selA = d.a;
       selB = d.b;
       fx.init();
       startMatch(d.a, d.b, d.seed);
       break;
     case 'rematch':
+      if (typeof d.seed !== 'number') { teardownNet('GAME VERSIONS DIFFER — RELOAD THE PAGE ON BOTH PHONES'); break; }
       doRematch(d.seed);
       break;
     case 'rematchReq':
@@ -877,13 +947,15 @@ function maybeHostStart() {
 function teardownNet(message = null) {
   net?.destroy();
   net = null;
-  try { remoteAudio?.pause(); } catch { /* ignore */ }
-  remoteAudio = null;
+  remoteAudioEl.srcObject = null; // keep the element — its gesture unlock persists across lobbies
   readyA = readyB = false;
   mySide = 'A';
   refreshMenu();
   updateNetUi();
-  if (message) $('#menuHint').textContent = message;
+  if (message) {
+    $('#menuHint').textContent = message;
+    if (!menuOpen) netToast(message); // the hint is invisible mid-fight
+  }
 }
 
 function updateNetUi() {
@@ -893,8 +965,10 @@ function updateNetUi() {
   if (net) {
     $('#netStatus').innerHTML = netConnected()
       ? `LIVE — YOU ARE ${mySide === 'A' ? 'BLUE' : 'RED'}`
-      : net.isHost && net.code
-        ? `LOBBY <b>${net.code}</b> — SHARE THIS CODE`
+      : net.isHost
+        // only a server-CONFIRMED code is shareable — an unregistered one can
+        // still collide and get silently rerolled
+        ? (net.registered && net.code ? `LOBBY <b>${net.code}</b> — SHARE THIS CODE` : 'OPENING LOBBY…')
         : 'CONNECTING…';
     const mic = $('#netMicBtn');
     mic.className = `netBtn ${net.micState}`;
@@ -927,6 +1001,7 @@ function updateNetUi() {
 }
 
 function doRematch(seed) {
+  if (!engine) return; // a 'rematch' can land after this side already left to the menu
   $('#banner').classList.add('hidden');
   $('#confetti').innerHTML = '';
   setFightRng(seed == null ? null : seededRng(seed));
@@ -943,6 +1018,7 @@ function closeBannerToMenu() {
 
 $('#netHostBtn').addEventListener('click', () => {
   fx.init();
+  unlockRemoteAudio();
   teardownNet();
   net = new Net(netCallbacks);
   mySide = 'A';
@@ -953,6 +1029,7 @@ $('#netHostBtn').addEventListener('click', () => {
 
 $('#netJoinBtn').addEventListener('click', () => {
   fx.init();
+  unlockRemoteAudio();
   const code = $('#netCodeInput').value.trim();
   if (!/^\d{4}$/.test(code)) {
     $('#menuHint').textContent = 'ENTER THE 4-DIGIT LOBBY CODE';

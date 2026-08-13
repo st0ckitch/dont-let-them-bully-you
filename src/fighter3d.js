@@ -292,14 +292,18 @@ export class Fighter3D {
     }
     this.flinchI *= Math.exp(-5 * dt);
 
-    // knockback velocity — softer decay so the shove eases out
+    // knockback velocity — softer decay so the shove eases out.
+    // The literal is exp(-4.5/60) correctly rounded: Math.exp is
+    // implementation-approximated and positions feed sim decisions, so seeded
+    // multiplayer needs bit-identical decay on every engine (update() always
+    // runs at the fixed 1/60 step — see SIM_STEP in main.js).
     if (this.vel.lengthSq() > 1e-6) {
       this.pos.addScaledVector(this.vel, dt);
-      this.vel.multiplyScalar(Math.exp(-4.5 * dt));
+      this.vel.multiplyScalar(0.9277434863285529);
     }
 
-    // keep inside the octagon canvas
-    const r = Math.hypot(this.pos.x, this.pos.z);
+    // keep inside the octagon canvas (sqrt not hypot — same determinism rule)
+    const r = Math.sqrt(this.pos.x * this.pos.x + this.pos.z * this.pos.z);
     if (r > 2.6) {
       this.pos.x *= 2.6 / r;
       this.pos.z *= 2.6 / r;
