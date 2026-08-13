@@ -99,6 +99,7 @@ export const SOSO = {
   builtin: 'funky_walk',
   height: 1.78,
   victoryClip: 'muscle_flex',
+  voice: 'assets/sounds/soso_win.m4a',
   // teenage prodigy: fastest man in the roster with a bottomless gas tank,
   // green everywhere else — no grappling, chin still developing. Full
   // 28-pairing Monte-Carlo (N=3000): 41-59% band, best vs merab (59, speed
