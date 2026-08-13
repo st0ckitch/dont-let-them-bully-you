@@ -64,4 +64,32 @@ export const DATO = {
   stats: { striking: 94, grappling: 86, cardio: 88, chin: 96, speed: 85 },
 };
 
-export const FIGHTERS = [MERAB, ILIA, DAVIT, COTNE, DATO];
+export const LEVAN = {
+  id: 'levan', short: 'LEVAN', name: 'Levan Kuprava', nick: 'The CPO', flag: '🇬🇪',
+  body: 'assets/levan_body.glb',
+  rig: 'levan',
+  builtin: 'gangnam_dance',
+  height: 1.8,
+  victoryClip: 'gangnam_dance',
+  // speed-first volume all-rounder — pressure without Cotne/Dato's one-punch
+  // gimmicks. Monte-Carlo balanced 43-57% vs the roster (N=3000): the Merab
+  // matchup rides his speed edge, the Cotne one fears the power, like everyone.
+  counterSkill: 0.28,
+  stats: { striking: 90, grappling: 90, cardio: 92, chin: 91, speed: 93 },
+};
+
+export const DAVID = {
+  id: 'david', short: 'DAVID', name: 'David Kometiani', nick: 'The CEO', flag: '🇬🇪',
+  body: 'assets/david_body.glb',
+  rig: 'david',
+  builtin: 'funny_dance_3',
+  height: 1.83,
+  victoryClip: 'funny_dance_3',
+  // boss with heavy hands: high striking + a bit of one-punch pop, weak
+  // grappling. Monte-Carlo balanced 48-52% vs the whole roster (N=3000).
+  counterSkill: 0.2,
+  powerKO: 1.8,
+  stats: { striking: 94, grappling: 82, cardio: 90, chin: 94, speed: 87 },
+};
+
+export const FIGHTERS = [MERAB, ILIA, DAVIT, COTNE, DATO, LEVAN, DAVID];
