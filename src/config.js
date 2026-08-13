@@ -100,11 +100,15 @@ export const SOSO = {
   height: 1.78,
   victoryClip: 'muscle_flex',
   voice: 'assets/sounds/soso_win.m4a',
-  // teenage prodigy: fastest man in the roster with a bottomless gas tank,
-  // green everywhere else — no grappling, chin still developing. Full
-  // 28-pairing Monte-Carlo (N=3000): 41-59% band, best vs merab (59, speed
-  // kryptonite), worst vs cotne (43, glass chin meets one-punch power).
+  // teenage prodigy: fastest man in the roster with a bottomless gas tank
+  // and finishing instinct, green everywhere else — no grappling, chin still
+  // developing. powerKO (not striking) is the buff lever here: flash KOs
+  // scale on the OPPONENT'S chin, so it lifts him vs the mid-tier without
+  // blowing out the merab matchup. Balanced against BOTH sims (simFight
+  // N=4000 AND headless live-engine N=200+): 46-61% band, wins mostly
+  // finishes. Weak-side story: cotne/david trade bombs with him ~50/50.
   counterSkill: 0.3,
+  powerKO: 1.6,
   stats: { striking: 89, grappling: 78, cardio: 93, chin: 90, speed: 94 },
 };
 
