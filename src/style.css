@@ -325,7 +325,10 @@ html, body {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
 }
 
-/* ---------- fighter select menu ---------- */
+/* ---------- fighter select menu (MK-style, live 3D preview) ---------- */
+/* The center of the overlay is transparent: the two picked fighters stand in
+   the octagon behind it. Only the top (title/plates) and bottom (roster strip)
+   bands darken the scene. */
 #menu {
   position: absolute;
   inset: 0;
@@ -333,92 +336,145 @@ html, body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 22px;
-  /* safe-area padding so the FIGHT button clears iOS home indicators */
-  padding: max(14px, env(safe-area-inset-top)) 14px max(14px, env(safe-area-inset-bottom));
-  background: radial-gradient(circle, rgba(4, 6, 12, 0.55), rgba(4, 6, 12, 0.92));
-  backdrop-filter: blur(8px);
+  gap: 10px;
+  padding: max(12px, env(safe-area-inset-top)) 12px max(10px, env(safe-area-inset-bottom));
+  background: linear-gradient(180deg,
+    rgba(4, 6, 12, 0.92) 0%, rgba(4, 6, 12, 0.55) 14%, rgba(4, 6, 12, 0.08) 30%,
+    rgba(4, 6, 12, 0.02) 52%, rgba(4, 6, 12, 0.6) 72%, rgba(4, 6, 12, 0.95) 100%);
   pointer-events: auto;
 }
 #menu.hidden { display: none; }
-#menuTitle, #menuFightBtn, #menuHint { flex: 0 0 auto; }
+/* the fight HUD behind the transparent middle is noise during selection */
+body.menuOpen #topbar, body.menuOpen #commentaryWrap { display: none; }
 #menuTitle {
+  flex: 0 0 auto;
   font-family: var(--anton);
   font-style: italic;
-  font-size: clamp(28px, 5.5vw, 48px);
+  font-size: clamp(20px, 4vw, 38px);
   letter-spacing: 4px;
   text-shadow: 0 0 34px rgba(210, 10, 10, 0.45);
 }
-/* the columns own the leftover height; each roster scrolls inside its column
-   so the FIGHT button below can never be pushed off-screen */
-#menuCols {
+#menuPlates {
   display: flex;
-  align-items: stretch;
-  gap: 26px;
-  flex: 0 1 auto;
-  min-height: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  width: min(940px, 96vw);
+  flex: 0 0 auto;
 }
-.mcol {
+.mplate {
+  pointer-events: auto;
+  cursor: pointer;
   display: flex;
   flex-direction: column;
-  min-height: 0;
+  gap: 3px;
+  min-width: 200px;
+  max-width: 42%;
+  padding: 10px 18px 12px;
+  background: linear-gradient(160deg, var(--ink) 60%, var(--ink-soft));
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+  font-family: var(--barlow);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
+.mpblue { align-items: flex-start; text-align: left; clip-path: polygon(0 0, 100% 0, calc(100% - 18px) 100%, 0 100%); }
+.mpred { align-items: flex-end; text-align: right; clip-path: polygon(18px 0, 100% 0, 100% 100%, 0 100%); }
+.mplate::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+.mpblue::before { background: linear-gradient(90deg, var(--blue), transparent 85%); }
+.mpred::before { background: linear-gradient(270deg, var(--red-hot), transparent 85%); }
+.mpside { font-weight: 700; font-size: 11px; letter-spacing: 3px; }
+.mpblue .mpside { color: #7ea2ff; }
+.mpred .mpside { color: #ff8089; }
+.mpname {
+  font-family: var(--anton);
+  font-size: clamp(18px, 3.2vw, 30px);
+  letter-spacing: 1.5px;
+  line-height: 1.05;
+  /* PATCHUASHVILI-length names must shrink, not spill past the angled clip */
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mpnick { font-weight: 600; font-size: 11px; letter-spacing: 2px; color: var(--gold); }
+.mpstat { font-weight: 600; font-size: 11px; letter-spacing: 1px; color: var(--text-dim); }
+.mplate.active.mpblue { border-color: var(--blue); box-shadow: 0 0 26px rgba(47, 107, 255, 0.5); }
+.mplate.active.mpred { border-color: var(--red-hot); box-shadow: 0 0 26px rgba(255, 45, 45, 0.5); }
 .mvs {
   align-self: center;
   font-family: var(--anton);
   font-style: italic;
-  font-size: 30px;
+  font-size: 26px;
   color: var(--gold);
+  flex: 0 0 auto;
 }
-.mside {
-  font-family: var(--barlow);
-  font-weight: 700;
-  font-size: 13px;
-  letter-spacing: 3px;
-  text-align: center;
-  margin-bottom: 10px;
-}
-.mblue .mside { color: #7ea2ff; }
-.mred .mside { color: #ff8089; }
-.mpick {
+#menuSpacer { flex: 1 1 auto; min-height: 0; }
+#menuBottom {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 10px;
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding: 2px 2px 6px;
-  scrollbar-width: thin;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
+  flex: 0 0 auto;
+  width: 100%;
 }
-.fcard { flex: 0 0 auto; }
-.fcard {
-  pointer-events: auto;
+/* the MK roster strip: face tiles in one horizontal scrollable row */
+#rosterBar {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-  width: min(240px, 38vw);
-  padding: 10px 14px;
+  gap: 9px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  max-width: min(96vw, 900px);
+  padding: 14px 8px 6px; /* headroom for the hover lift */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+#rosterBar::-webkit-scrollbar { height: 5px; }
+#rosterBar::-webkit-scrollbar-track { background: transparent; }
+#rosterBar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.22); border-radius: 3px; }
+.rtile {
+  position: relative;
+  flex: 0 0 auto;
+  width: 82px;
+  padding: 0;
   background: linear-gradient(160deg, var(--ink), var(--ink-soft));
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  color: #fff;
+  border: 2px solid var(--line);
+  border-radius: 6px;
+  overflow: hidden;
   cursor: pointer;
-  text-align: left;
+  color: #fff;
   transition: transform 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
 }
-.fcard:hover:not(:disabled) { transform: translateX(4px); }
-.fcard:disabled { opacity: 0.28; cursor: default; }
-.fcard .fcflag { font-size: 18px; }
-.fcard .fcname { font-family: var(--anton); font-size: 20px; letter-spacing: 1.5px; }
-.fcard .fcnick { font-size: 11px; font-weight: 600; letter-spacing: 2px; color: var(--gold); }
-.fcard .fcstat { font-size: 11px; font-weight: 600; letter-spacing: 1px; color: var(--text-dim); }
-.mblue .fcard.sel { border-color: var(--blue); box-shadow: 0 0 22px rgba(47, 107, 255, 0.45); }
-.mred .fcard.sel { border-color: var(--red-hot); box-shadow: 0 0 22px rgba(255, 45, 45, 0.45); }
+.rtile:hover { transform: translateY(-4px); border-color: rgba(255, 255, 255, 0.45); }
+.rtile img, .rtile .rflag { width: 100%; height: 76px; object-fit: cover; display: block; }
+.rtile .rflag { display: flex; align-items: center; justify-content: center; font-size: 34px; }
+.rtile .rname {
+  display: block;
+  font-family: var(--anton);
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-align: center;
+  padding: 4px 2px 5px;
+  background: rgba(0, 0, 0, 0.35);
+}
+.rtile.selA { border-color: var(--blue); box-shadow: 0 0 16px rgba(47, 107, 255, 0.55); }
+.rtile.selB { border-color: var(--red-hot); box-shadow: 0 0 16px rgba(255, 45, 45, 0.55); }
+.rtile.selA::after, .rtile.selB::after {
+  position: absolute;
+  top: 3px;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  padding: 2px 5px;
+  border-radius: 2px;
+  color: #fff;
+}
+.rtile.selA::after { content: 'BLUE'; left: 3px; background: var(--blue); }
+.rtile.selB::after { content: 'RED'; right: 3px; background: var(--red-hot); }
 #menuHint {
   font-size: 13px;
   font-weight: 400;
@@ -545,39 +601,43 @@ html, body {
   .skill b { width: 18px; }
   #commentary { font-size: 16px; }
 
-  /* fighter select: tighter cards, both rosters fully on screen and
-     scrollable, FIGHT always visible above the home indicator */
-  #menu { gap: 12px; }
-  #menuTitle { font-size: 21px; letter-spacing: 2px; }
-  #menuCols { gap: 8px; width: 100%; justify-content: center; }
-  .mvs { font-size: 18px; }
-  .mside { font-size: 11px; letter-spacing: 2px; margin-bottom: 7px; }
-  .fcard {
-    width: 42vw;
-    padding: 7px 10px 8px;
-    display: grid;
-    grid-template-columns: auto 1fr;
-    column-gap: 8px;
-    align-items: center;
-  }
-  .fcard .fcflag { font-size: 15px; grid-row: 1 / span 3; }
-  .fcard .fcname { font-size: 15px; letter-spacing: 1px; }
-  .fcard .fcnick { font-size: 9px; letter-spacing: 1.4px; }
-  .fcard .fcstat { font-size: 9.5px; letter-spacing: 0.4px; white-space: nowrap; }
+  /* fighter select: slim plates, scrollable tile strip, FIGHT always
+     visible above the home indicator */
+  #menu { gap: 6px; }
+  #menuTitle { font-size: 17px; letter-spacing: 2px; }
+  #menuPlates { gap: 8px; }
+  .mplate { min-width: 0; flex: 1; padding: 7px 10px 8px; }
+  .mpname { font-size: 15px; }
+  .mpnick { font-size: 9px; letter-spacing: 1.4px; }
+  .mpstat { display: none; }
+  .mvs { font-size: 16px; }
+  #rosterBar { gap: 6px; max-width: 100vw; padding: 12px 6px 4px; }
+  .rtile { width: 64px; }
+  .rtile img, .rtile .rflag { height: 58px; }
+  .rtile .rflag { font-size: 26px; }
+  .rtile .rname { font-size: 9px; }
+  #menuBottom { gap: 8px; }
   #menuFightBtn {
     width: min(92vw, 360px);
-    padding: 15px 0 13px;
-    font-size: 22px;
+    padding: 13px 0 11px;
+    font-size: 20px;
     letter-spacing: 5px;
   }
-  #menuHint { font-size: 11px; text-align: center; }
+  #menuHint { font-size: 10px; text-align: center; }
 }
 
-/* landscape phones: shrink the chrome so the rosters keep real height */
+/* landscape phones: shrink the chrome so the 3D preview keeps real height */
 @media (max-height: 450px) {
-  #menu { gap: 8px; }
-  #menuTitle { font-size: 19px; letter-spacing: 2px; }
-  .mside { margin-bottom: 4px; }
-  #menuFightBtn { padding: 10px 44px 9px 50px; font-size: 18px; letter-spacing: 4px; }
+  #menu { gap: 4px; }
+  #menuTitle { font-size: 15px; letter-spacing: 2px; }
+  .mplate { padding: 5px 10px 6px; gap: 1px; }
+  .mpname { font-size: 14px; }
+  .mpstat { display: none; }
+  #rosterBar { padding: 8px 6px 2px; }
+  .rtile { width: 56px; }
+  .rtile img, .rtile .rflag { height: 48px; }
+  .rtile .rname { font-size: 8px; }
+  #menuBottom { gap: 6px; }
+  #menuFightBtn { padding: 8px 40px 7px 46px; font-size: 16px; letter-spacing: 4px; }
   #menuHint { display: none; }
 }

@@ -64,19 +64,27 @@
     <div id="confetti"></div>
     <div id="menu" class="hidden">
       <div id="menuTitle">CHOOSE YOUR FIGHTERS</div>
-      <div id="menuCols">
-        <div class="mcol mblue">
-          <div class="mside">BLUE CORNER</div>
-          <div class="mpick" id="pickA"></div>
-        </div>
+      <div id="menuPlates">
+        <button class="mplate mpblue active" id="mplateA">
+          <span class="mpside">BLUE CORNER</span>
+          <span class="mpname"></span>
+          <span class="mpnick"></span>
+          <span class="mpstat"></span>
+        </button>
         <div class="mvs">VS</div>
-        <div class="mcol mred">
-          <div class="mside">RED CORNER</div>
-          <div class="mpick" id="pickB"></div>
-        </div>
+        <button class="mplate mpred" id="mplateB">
+          <span class="mpside">RED CORNER</span>
+          <span class="mpname"></span>
+          <span class="mpnick"></span>
+          <span class="mpstat"></span>
+        </button>
       </div>
-      <button id="menuFightBtn">FIGHT</button>
-      <div id="menuHint">3 rounds × 30 seconds — win by KO, flash KO, or the judges' scorecards</div>
+      <div id="menuSpacer"></div>
+      <div id="menuBottom">
+        <div id="rosterBar"></div>
+        <button id="menuFightBtn">FIGHT</button>
+        <div id="menuHint">3 rounds × 30 seconds — win by KO, flash KO, or the judges' scorecards</div>
+      </div>
     </div>
     <div id="loading">
       <div id="loadTitle"><em>MMA</em> <span>MEGA</span> <em>FIGHT</em></div>

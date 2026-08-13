@@ -544,6 +544,8 @@ let fighterB = null;
 let engine = null;
 let selA = 'merab';
 let selB = 'ilia';
+let activeSide = 'A'; // which corner the next roster tap assigns (MK-style: alternates)
+let menuOpen = false;
 
 function updateHP() {
   if (!fighterA) return;
@@ -631,6 +633,8 @@ function startMatch(idA, idB) {
   setPlate('a', fighterA.cfg);
   setPlate('b', fighterB.cfg);
   engine = new Engine(fighterA, fighterB, engineCallbacks);
+  menuOpen = false;
+  document.body.classList.remove('menuOpen');
   $('#menu').classList.add('hidden');
   fx.bell();
   fx.startMusic();
@@ -639,40 +643,129 @@ function startMatch(idA, idB) {
   window.__fight = { engine, fighters, fighterA, fighterB, simFight };
 }
 
-// ---------- Fighter select menu ----------
-function buildMenu() {
-  for (const side of ['A', 'B']) {
-    $(side === 'A' ? '#pickA' : '#pickB').innerHTML = FIGHTERS.map(c => `
-      <button class="fcard" data-id="${c.id}" data-side="${side}">
-        <span class="fcflag">${c.flag}</span>
-        <span class="fcname">${c.short}</span>
-        <span class="fcnick">${c.nick.toUpperCase()}</span>
-        <span class="fcstat">STR ${c.stats.striking} · SPD ${c.stats.speed} · CAR ${c.stats.cardio}</span>
-      </button>`).join('');
+// ---------- Fighter select menu (MK-style, live 3D preview) ----------
+// One-shot face portraits for the roster tiles: render each fighter's head
+// with a throwaway offscreen renderer at load time (models are still in bind
+// pose — mixers haven't ticked — so every face is neutral and forward).
+function makeThumbs() {
+  const thumbs = {};
+  try {
+    const tr = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+    tr.setSize(156, 156);
+    tr.outputColorSpace = THREE.SRGBColorSpace;
+    tr.toneMapping = THREE.ACESFilmicToneMapping;
+    tr.toneMappingExposure = 1.18;
+    const cam = new THREE.PerspectiveCamera(30, 1, 0.05, 30);
+    const bg = scene.background;
+    const fog = scene.fog;
+    scene.background = null; // keep tile corners transparent
+    scene.fog = null;
+    // frame off the bounding box, not the Head bone — bone origins sit at
+    // different heights per rig and cropped some faces at the chin/forehead
+    const box = new THREE.Box3();
+    for (const f of Object.values(fighters)) {
+      f.root.visible = true;
+      scene.updateMatrixWorld(true);
+      box.setFromObject(f.root);
+      const cx = (box.min.x + box.max.x) / 2;
+      const eyeY = box.max.y - 0.12; // crown sits ~0.12m above the eyes
+      cam.position.set(cx, eyeY, box.max.z + 0.45);
+      cam.lookAt(cx, eyeY - 0.01, (box.min.z + box.max.z) / 2);
+      tr.render(scene, cam);
+      thumbs[f.cfg.id] = tr.domElement.toDataURL();
+      f.root.visible = false;
+    }
+    scene.background = bg;
+    scene.fog = fog;
+    tr.dispose();
+    tr.forceContextLoss?.();
+  } catch (err) {
+    console.warn('portrait render failed — tiles fall back to flags', err);
   }
-  document.querySelectorAll('.fcard').forEach(el =>
+  return thumbs;
+}
+
+// The picked fighters stand in the octagon behind the transparent menu
+// center, each looping their signature clip; a fresh pick plays the victory
+// clip once as a selection flourish before settling into the loop.
+// portrait phones crop a wide two-shot — stand the fighters closer together
+// and pull the camera further back there (see the menu branch of the loop)
+const previewSpread = () => (camera.aspect < 0.9 ? 0.55 : 0.85);
+const _lookOut = new THREE.Vector3();
+const _previewP = new THREE.Vector3();
+
+function updateMenuPreview(changedSide = null) {
+  for (const f of Object.values(fighters)) f.root.visible = false;
+  for (const side of ['A', 'B']) {
+    const f = fighters[side === 'A' ? selA : selB];
+    if (f.state !== 'idle') f.reset(); // clear KO tilt / victory turn from the last fight
+    const p = _previewP.set((side === 'A' ? -1 : 1) * previewSpread(), 0, 0);
+    f.pos.copy(p);
+    f.faceToward(_lookOut.set(p.x * 0.25, 0, 9), 0, true);
+    f.root.visible = true;
+    if (side === changedSide) {
+      if (f.cfg.victoryClip !== f.cfg.builtin) {
+        f.play(f.cfg.victoryClip, { once: true, fade: 0.12, onDone: () => f.play(f.cfg.builtin, { fade: 0.4 }) });
+      } else {
+        f.play(f.cfg.builtin, { fade: 0.12 });
+      }
+    } else if (f.currentKey !== f.cfg.builtin && f.currentKey !== f.cfg.victoryClip) {
+      f.play(f.cfg.builtin, { fade: 0.25 });
+    }
+  }
+}
+
+function openMenu() {
+  engine = null; // stop any finished fight from simulating behind the menu
+  fighterA = null;
+  fighterB = null;
+  menuOpen = true;
+  document.body.classList.add('menuOpen');
+  $('#menu').classList.remove('hidden');
+  refreshMenu();
+  updateMenuPreview();
+}
+
+function buildMenu(thumbs) {
+  $('#rosterBar').innerHTML = FIGHTERS.map(c => `
+    <button class="rtile" data-id="${c.id}" aria-label="${c.name}">
+      ${thumbs[c.id] ? `<img src="${thumbs[c.id]}" alt="">` : `<span class="rflag">${c.flag}</span>`}
+      <span class="rname">${c.short}</span>
+    </button>`).join('');
+  document.querySelectorAll('.rtile').forEach(el =>
     el.addEventListener('click', () => {
-      const { id, side } = el.dataset;
-      if (side === 'A') {
+      const id = el.dataset.id;
+      if (activeSide === 'A') {
         selA = id;
         if (selB === id) selB = FIGHTERS.find(c => c.id !== id).id;
       } else {
         selB = id;
         if (selA === id) selA = FIGHTERS.find(c => c.id !== id).id;
       }
+      const changed = activeSide;
+      activeSide = activeSide === 'A' ? 'B' : 'A'; // MK flow: corners alternate
       refreshMenu();
+      updateMenuPreview(changed);
     }),
   );
-  refreshMenu();
+  $('#mplateA').addEventListener('click', () => { activeSide = 'A'; refreshMenu(); });
+  $('#mplateB').addEventListener('click', () => { activeSide = 'B'; refreshMenu(); });
 }
 
 function refreshMenu() {
-  document.querySelectorAll('.fcard').forEach(el => {
-    const sel = el.dataset.side === 'A' ? selA : selB;
-    const other = el.dataset.side === 'A' ? selB : selA;
-    el.classList.toggle('sel', el.dataset.id === sel);
-    el.disabled = el.dataset.id === other;
+  document.querySelectorAll('.rtile').forEach(el => {
+    el.classList.toggle('selA', el.dataset.id === selA);
+    el.classList.toggle('selB', el.dataset.id === selB);
   });
+  for (const [pid, sel, side] of [['#mplateA', selA, 'A'], ['#mplateB', selB, 'B']]) {
+    const cfg = FIGHTERS.find(c => c.id === sel);
+    const p = $(pid);
+    p.querySelector('.mpname').textContent = cfg.name.toUpperCase();
+    p.querySelector('.mpnick').textContent = cfg.nick.toUpperCase();
+    p.querySelector('.mpstat').textContent =
+      `STR ${cfg.stats.striking} · GRP ${cfg.stats.grappling} · SPD ${cfg.stats.speed} · CAR ${cfg.stats.cardio}`;
+    p.classList.toggle('active', activeSide === side);
+  }
 }
 
 $('#menuFightBtn').addEventListener('click', () => {
@@ -691,7 +784,7 @@ $('#rematchBtn').addEventListener('click', () => {
 $('#changeBtn').addEventListener('click', () => {
   $('#banner').classList.add('hidden');
   $('#confetti').innerHTML = '';
-  $('#menu').classList.remove('hidden');
+  openMenu();
 });
 
 // ---------- Async load ----------
@@ -722,9 +815,9 @@ loadAssets(FIGHTERS, (loaded, total) => {
     fighters[cfg.id] = f;
   });
   fx.loadVoices(FIGHTERS);
-  buildMenu();
+  buildMenu(makeThumbs());
   $('#loading').classList.add('hidden');
-  $('#menu').classList.remove('hidden');
+  openMenu();
   window.__fight = { fighters, simFight };
 }).catch(err => {
   console.error(err);
@@ -764,7 +857,14 @@ renderer.setAnimationLoop(() => {
     if (f.root.visible) f.update(dt);
   }
 
-  if (fighterA && fighterB) {
+  if (menuOpen) {
+    // select screen: settle into a close two-shot of the preview fighters
+    camTarget.x += (0 - camTarget.x) * Math.min(1, dt * 2);
+    camTarget.z += (0.2 - camTarget.z) * Math.min(1, dt * 2);
+    const menuR = camera.aspect < 0.9 ? 6.0 : 5.0;
+    radius += (menuR - radius) * Math.min(1, dt * 1.6);
+    camY += (2.2 - camY) * Math.min(1, dt * 1.6);
+  } else if (fighterA && fighterB) {
     const mid = fighterA.pos.clone().add(fighterB.pos).multiplyScalar(0.5);
     camTarget.x += (mid.x - camTarget.x) * Math.min(1, dt * 3);
     camTarget.z += (mid.z - camTarget.z) * Math.min(1, dt * 3);
@@ -806,4 +906,5 @@ window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  if (menuOpen) updateMenuPreview(); // re-space the two-shot for the new aspect
 });
