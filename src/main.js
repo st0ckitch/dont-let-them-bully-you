@@ -1014,7 +1014,7 @@ let readyA = false;
 let readyB = false;
 
 const netConnected = () => !!net?.conn?.open;
-const HINT_DEFAULT = "3 rounds × 30 seconds — win by KO, flash KO, or the judges' scorecards";
+const HINT_DEFAULT = "3 rounds × 30 seconds — drag the arena to move the camera, double-tap to reset";
 
 // One persistent, DOM-attached element for the opponent's voice: iOS Safari
 // refuses audio on detached elements, and its autoplay policy blocks play()
@@ -1451,6 +1451,32 @@ function autoQuality(rawDtMs, t) {
 }
 const camTarget = new THREE.Vector3(0, 1.0, 0);
 
+// ---------- user camera orbit (drag to rotate, works in solo and online —
+// the camera is presentation-only, so it never touches the seeded sim) ----------
+let userYaw = 0; // horizontal drag, radians added to the cinematic sway
+let userY = 0; // vertical drag, metres added to the eye height
+let camDragging = false;
+let dragPX = 0;
+let dragPY = 0;
+canvas.style.touchAction = 'none'; // one-finger drags must reach us, not the browser
+canvas.addEventListener('pointerdown', e => {
+  camDragging = true;
+  dragPX = e.clientX;
+  dragPY = e.clientY;
+  try { canvas.setPointerCapture(e.pointerId); } catch { /* ignore */ }
+});
+canvas.addEventListener('pointermove', e => {
+  if (!camDragging) return;
+  userYaw += (e.clientX - dragPX) * 0.005;
+  userY = Math.max(-1.0, Math.min(2.4, userY - (e.clientY - dragPY) * 0.004));
+  dragPX = e.clientX;
+  dragPY = e.clientY;
+});
+for (const ev of ['pointerup', 'pointercancel']) {
+  canvas.addEventListener(ev, () => { camDragging = false; });
+}
+canvas.addEventListener('dblclick', () => { userYaw = 0; userY = 0; }); // double-tap resets the shot
+
 renderer.setAnimationLoop(() => {
   const rawDt = clock.getDelta();
   const dt = Math.min(rawDt, 0.05);
@@ -1489,7 +1515,7 @@ renderer.setAnimationLoop(() => {
     camY += (targetY - camY) * Math.min(1, dt * 1.6);
   }
 
-  const ang = Math.sin(t * 0.1) * 0.4;
+  const ang = Math.sin(t * 0.1) * 0.4 + userYaw; // cinematic sway + the user's drag
   // clamp the eye inside the cage: fence flat sides sit at ~5.4 world radius
   const dirX = Math.sin(ang), dirZ = Math.cos(ang);
   const MAX_R = 5.0;
@@ -1500,7 +1526,7 @@ renderer.setAnimationLoop(() => {
   const rEye = Math.max(2.4, Math.min(radius, -td + Math.sqrt(Math.max(0, td * td + MAX_R * MAX_R - t2))));
   camera.position.set(
     camTarget.x + dirX * rEye,
-    camY + Math.sin(t * 0.23) * 0.07,
+    Math.max(1.15, camY + userY + Math.sin(t * 0.23) * 0.07),
     camTarget.z + dirZ * rEye,
   );
   if (shake > 0.002) {
