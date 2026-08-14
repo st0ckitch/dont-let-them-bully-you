@@ -831,8 +831,9 @@ function startMatch(idA, idB, seed = null) {
   for (const f of Object.values(fighters)) f.root.visible = false;
   fighterA = fighters[idA];
   fighterB = fighters[idB];
-  fighterA.corner = '#3b6cff';
-  fighterB.corner = '#ff3b4d';
+  // corner coding per the broadcast design: A = red, B = green (tints the winner banner)
+  fighterA.corner = '#c8102e';
+  fighterB.corner = '#00c853';
   fighterA.startPos.set(-1.1, 0, 0);
   fighterB.startPos.set(1.1, 0, 0);
   fighterA.root.visible = true;

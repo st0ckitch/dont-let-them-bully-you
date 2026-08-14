@@ -81,8 +81,8 @@ html, body {
   align-items: center;
   justify-content: space-between;
   gap: 24px;
-  height: 52px;
-  padding: 0 20px;
+  height: 44px;
+  padding: 0 16px;
   background: var(--bc-tile);
   pointer-events: auto;
 }
@@ -90,19 +90,21 @@ html, body {
   display: flex;
   align-items: center;
   gap: 10px;
-  font: 800 14px/20px var(--bc-display);
+  font: 800 12px/16px var(--bc-display);
   letter-spacing: 0.12em;
   color: #fff;
+  white-space: nowrap;
+  flex: 0 0 auto;
 }
-#bnavBrand svg { width: 20px; height: 20px; }
+#bnavBrand svg { width: 16px; height: 16px; }
 #bnavTabs { display: flex; gap: 4px; }
 .btab {
   pointer-events: auto;
-  padding: 8px 12px;
+  padding: 6px 10px;
   border: 0;
   border-radius: 9999px;
   background: transparent;
-  font: 700 12px/16px var(--bc-body);
+  font: 700 10.5px/14px var(--bc-body);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--bc-muted);
@@ -114,14 +116,14 @@ html, body {
 
 #broadcast {
   position: absolute;
-  top: 52px;
+  top: 44px;
   left: 0;
   right: 0;
   display: grid;
-  grid-template-columns: 280px minmax(0, 1fr) 280px;
+  grid-template-columns: 208px minmax(0, 1fr) 208px;
   grid-template-areas: 'hdr hdr hdr' 'band band band' 'ca . cb' 'feed feed feed';
-  gap: 12px;
-  padding: 12px 16px 0;
+  gap: 8px;
+  padding: 8px 12px 0;
   pointer-events: none;
 }
 #broadcast.hidden { display: none; }
@@ -136,7 +138,7 @@ html, body {
   flex-wrap: wrap;
 }
 #matchTitle {
-  font: 800 24px/28px var(--bc-display);
+  font: 800 17px/21px var(--bc-display);
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: #fff;
@@ -144,7 +146,7 @@ html, body {
 }
 #matchSub {
   margin-top: 2px;
-  font: 500 13px/20px var(--bc-body);
+  font: 500 11px/15px var(--bc-body);
   color: var(--bc-muted);
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
 }
@@ -153,40 +155,40 @@ html, body {
   pointer-events: auto;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  height: 36px;
-  padding: 0 20px;
+  gap: 6px;
+  height: 29px;
+  padding: 0 13px;
   border: 0;
   border-radius: 9999px;
   background: var(--bc-tile);
   color: #fff;
-  font: 700 12px/16px var(--bc-body);
+  font: 700 10px/14px var(--bc-body);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   cursor: pointer;
   transition: filter 150ms var(--bc-ease), transform 80ms var(--bc-ease);
 }
-.bcBtn svg { width: 16px; height: 16px; }
+.bcBtn svg { width: 13px; height: 13px; }
 .bcBtn:hover { filter: brightness(1.5); }
 .bcBtn:active { transform: translateY(1px) scale(0.98); }
 .bcBtn.bcRed { background: var(--bc-red); }
 .bcBtn.bcRed:hover { filter: brightness(1.12); }
 #speedSeg {
   display: inline-flex;
-  gap: 4px;
-  padding: 4px;
+  gap: 3px;
+  padding: 3px;
   background: var(--bc-tile);
   border-radius: 9999px;
 }
 .speedBtn {
   pointer-events: auto;
-  height: 28px;
-  padding: 0 12px;
+  height: 23px;
+  padding: 0 9px;
   border: 0;
   border-radius: 9999px;
   background: transparent;
   color: var(--bc-muted);
-  font: 700 12px/16px var(--bc-body);
+  font: 700 10.5px/14px var(--bc-body);
   cursor: pointer;
   transition: color 150ms var(--bc-ease), background-color 150ms var(--bc-ease);
 }
@@ -199,16 +201,16 @@ html, body {
   grid-area: band;
   display: grid;
   grid-template-columns: 1fr auto 1fr;
-  gap: 20px;
+  gap: 14px;
   align-items: center;
-  padding: 8px 20px 9px;
-  border-radius: 16px;
+  padding: 5px 14px 6px;
+  border-radius: 12px;
   background: var(--bc-surface);
 }
-.sbSide { display: flex; align-items: center; gap: 12px; min-width: 0; position: relative; }
+.sbSide { display: flex; align-items: center; gap: 9px; min-width: 0; position: relative; }
 .sbB { justify-content: flex-end; text-align: right; }
 .sbHp {
-  font: 900 24px/24px var(--bc-display);
+  font: 900 19px/19px var(--bc-display);
   letter-spacing: -0.02em;
   color: #fff;
   text-align: center;
@@ -224,7 +226,7 @@ html, body {
 .sbInfo { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 3px; }
 .sbB .sbInfo { align-items: flex-end; }
 .sbName {
-  font: 800 13px/16px var(--bc-display);
+  font: 800 11px/14px var(--bc-display);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: #fff;
@@ -234,7 +236,7 @@ html, body {
   max-width: 100%;
 }
 .sbTag {
-  font: 700 8.5px/11px var(--bc-body);
+  font: 700 7.5px/10px var(--bc-body);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: #fff;
@@ -243,9 +245,9 @@ html, body {
 }
 .sbBarWrap {
   position: relative;
-  height: 7px;
+  height: 5px;
   width: 100%;
-  min-width: 100px;
+  min-width: 90px;
   background: var(--bc-tile);
   border-radius: 9999px;
   overflow: hidden;
@@ -269,7 +271,7 @@ html, body {
 }
 .sbStamWrap {
   position: relative;
-  height: 4px;
+  height: 3px;
   width: 100%;
   background: var(--bc-tile);
   border-radius: 9999px;
@@ -292,32 +294,32 @@ html, body {
   opacity: 0.68;
 }
 #sbClock {
-  font: 900 20px/22px var(--bc-display);
+  font: 900 16px/18px var(--bc-display);
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em;
   color: #fff;
 }
-.sbSide .dmgpop { right: 4px; top: -4px; font-size: 19px; }
+.sbSide .dmgpop { right: 4px; top: -4px; font-size: 16px; }
 .sbSide.sbB .dmgpop { right: auto; left: 4px; }
 
 /* borderless charcoal fighter panels */
 .ccard {
   background: var(--bc-tile);
-  border-radius: 16px;
-  padding: 14px 16px;
+  border-radius: 12px;
+  padding: 9px 11px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 }
 .ccA { grid-area: ca; }
 .ccB { grid-area: cb; }
-.ccHead { display: flex; align-items: center; gap: 12px; }
+.ccHead { display: flex; align-items: center; gap: 8px; }
 .ccB .ccHead { flex-direction: row-reverse; }
 .ccB .ccWho { text-align: right; }
 .ccHead img {
-  width: 48px;
-  height: 48px;
-  border-radius: 8px;
+  width: 34px;
+  height: 34px;
+  border-radius: 6px;
   object-fit: cover;
   background: var(--bc-recessed);
   outline: 1px solid var(--bc-divider);
@@ -325,31 +327,31 @@ html, body {
 }
 .ccWho { min-width: 0; flex: 1; }
 .ccName {
-  font: 800 13px/17px var(--bc-display);
+  font: 800 10.5px/14px var(--bc-display);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.ccRec { margin-top: 2px; font: 500 11px/16px var(--bc-body); color: var(--bc-muted); }
+.ccRec { margin-top: 1px; font: 500 9.5px/13px var(--bc-body); color: var(--bc-muted); }
 .ccCorner {
   align-self: flex-start;
-  padding: 4px 8px;
-  border-radius: 8px;
-  font: 800 9px/12px var(--bc-body);
+  padding: 2px 6px;
+  border-radius: 6px;
+  font: 800 7.5px/11px var(--bc-body);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   white-space: nowrap;
 }
 .ccCorner.ccRedC { background: var(--bc-red); color: #fff; }
 .ccCorner.ccGrn { background: var(--bc-grn); color: #0a0a0a; }
-.ccStats { display: flex; flex-direction: column; gap: 9px; }
-.ccStats .skill { display: grid; grid-template-columns: 36px 1fr 30px; gap: 12px; align-items: center; margin: 0; }
-.ccB .ccStats .skill { grid-template-columns: 30px 1fr 36px; }
+.ccStats { display: flex; flex-direction: column; gap: 5px; }
+.ccStats .skill { display: grid; grid-template-columns: 27px 1fr 22px; gap: 8px; align-items: center; margin: 0; }
+.ccB .ccStats .skill { grid-template-columns: 22px 1fr 27px; }
 .ccStats .skill span {
   width: auto;
-  font: 700 10px/12px var(--bc-body);
+  font: 700 8px/10px var(--bc-body);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--bc-muted);
@@ -359,13 +361,13 @@ html, body {
 .ccB .ccStats .skill .sbar { order: 1; }
 .ccStats .skill b {
   width: auto;
-  font: 700 12px/15px var(--bc-display);
+  font: 700 10px/13px var(--bc-display);
   font-variant-numeric: tabular-nums;
   text-align: right;
   color: #fff;
 }
 .ccStats .sbar {
-  height: 7px;
+  height: 4.5px;
   background: var(--bc-recessed);
   border-radius: 9999px;
   transform: none;
@@ -386,19 +388,19 @@ html, body {
   margin-top: auto;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  gap: 6px;
   border-top: 1px solid var(--bc-divider);
-  padding-top: 10px;
+  padding-top: 6px;
 }
 .ccB .ccCounts div { text-align: right; }
 .ccCounts b {
   display: block;
-  font: 800 18px/22px var(--bc-display);
+  font: 800 13.5px/17px var(--bc-display);
   font-variant-numeric: tabular-nums;
   color: #fff;
 }
 .ccCounts span {
-  font: 700 9px/14px var(--bc-body);
+  font: 700 7.5px/11px var(--bc-body);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--bc-muted);
@@ -408,11 +410,11 @@ html, body {
 #feed {
   grid-area: feed;
   justify-self: start;
-  width: min(460px, 44vw);
+  width: min(350px, 34vw);
   background: var(--bc-tile);
-  border-radius: 16px;
-  padding: 4px 16px 8px;
-  max-height: 176px;
+  border-radius: 12px;
+  padding: 2px 12px 6px;
+  max-height: 122px;
   overflow: hidden;
 }
 #feed.hidden { display: none; }
@@ -421,38 +423,38 @@ html, body {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 10px 0 8px;
+  padding: 7px 0 5px;
 }
 #feedHead h2 {
-  font: 800 11px/15px var(--bc-display);
+  font: 800 9.5px/13px var(--bc-display);
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
 #feedMeta {
-  font: 700 10px/15px var(--bc-body);
+  font: 700 8.5px/13px var(--bc-body);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--bc-muted);
 }
 .feedRow {
   display: grid;
-  grid-template-columns: 56px 72px 1fr 44px;
-  gap: 10px;
+  grid-template-columns: 42px 56px 1fr 34px;
+  gap: 8px;
   align-items: center;
-  min-height: 32px;
+  min-height: 24px;
   animation: bcBlowLand 0.4s var(--bc-ease) backwards;
 }
 .feedRow + .feedRow { border-top: 1px solid var(--bc-divider); }
 .fTime {
-  font: 700 11px/14px var(--bc-body);
+  font: 700 9.5px/12px var(--bc-body);
   font-variant-numeric: tabular-nums;
   color: var(--bc-muted);
 }
 .fTag {
   justify-self: start;
-  padding: 2px 7px;
-  border-radius: 8px;
-  font: 800 9px/13px var(--bc-body);
+  padding: 1px 5px;
+  border-radius: 6px;
+  font: 800 7.5px/11px var(--bc-body);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -460,13 +462,13 @@ html, body {
 .fTag.grn { background: var(--bc-grn); color: #0a0a0a; }
 .fTag.sys { background: var(--bc-hover); color: #fff; }
 .fText {
-  font: 400 12.5px/17px var(--bc-body);
+  font: 400 10.5px/14px var(--bc-body);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .fDelta {
-  font: 800 12.5px/16px var(--bc-display);
+  font: 800 10.5px/13px var(--bc-display);
   font-variant-numeric: tabular-nums;
   color: var(--bc-red);
   text-align: right;
@@ -572,13 +574,46 @@ body.fighting #topbar { display: none; }
     scrollbar-width: none;
     padding-bottom: 2px;
   }
-  .bcBtn { font-size: 10.5px; padding: 0 12px; height: 32px; white-space: nowrap; flex: 0 0 auto; }
+  .bcBtn { font-size: 9.5px; padding: 0 10px; height: 27px; white-space: nowrap; flex: 0 0 auto; }
   #speedSeg { flex: 0 0 auto; }
-  #bnavBrand { font-size: 12px; letter-spacing: 0.08em; }
-  #bnavBrand svg { width: 16px; height: 16px; }
-  .btab { font-size: 10px; padding: 5px 8px; letter-spacing: 0.06em; }
+  .speedBtn { height: 21px; padding: 0 8px; font-size: 9.5px; }
+  #bnavBrand { font-size: 11px; letter-spacing: 0.08em; }
+  #bnavBrand svg { width: 14px; height: 14px; }
+  .btab { font-size: 9.5px; padding: 5px 8px; letter-spacing: 0.06em; }
   /* controls sit above the plates — plates drop below the single row */
-  body.fighting #topbar { display: flex; top: 92px; }
+  body.fighting #topbar { display: flex; top: 78px; }
+  /* compact fight plates: the full-size versions ate half a phone screen */
+  .plate { width: 46vw; padding: 6px 8px 7px; }
+  .plast { font-size: 13px; }
+  .pfirst { font-size: 9px; letter-spacing: 1.8px; }
+  .nick { display: none; }
+  .flag { font-size: 13px; }
+  .hpwrap { height: 8px; margin: 6px 0 5px; }
+  .skill { margin: 2px 0; font-size: 9.5px; gap: 5px; letter-spacing: 1px; }
+  .skill span { width: 24px; font-size: 8.5px; }
+  .skill b { width: 15px; font-size: 9px; }
+  .sbar { height: 3px; }
+  #vsBadge { width: 32px; height: 32px; margin-top: 2px; }
+  #vsBadge span { font-size: 11px; }
+  #centerCol { margin-top: 6px; gap: 4px; }
+  #roundHud { padding: 2px 8px 2px; gap: 6px; }
+  #roundLabel { font-size: 10px; letter-spacing: 1.4px; }
+  #roundClock { font-size: 13px; letter-spacing: 1.6px; }
+  #commentary { font-size: 13px; padding: 5px 14px 6px 16px; border-left-width: 3px; }
+  #commentaryWrap { bottom: 86px; }
+  /* select screen: tighter tiles + slimmer chrome */
+  #menuTitle { font-size: 15px; letter-spacing: 1.5px; }
+  .rtile { width: 58px; }
+  .rtile img, .rtile .rflag { height: 52px; }
+  .rtile .rname { font-size: 8.5px; padding: 3px 2px 4px; }
+  #rosterBar { gap: 5px; padding: 10px 6px 3px; }
+  .mplate { padding: 5px 8px 6px; gap: 2px; }
+  .mpname { font-size: 14px; }
+  .mpnick { font-size: 8px; }
+  .netBtn { font-size: 10px; padding: 6px 10px 5px; letter-spacing: 1.4px; }
+  #netCodeInput { width: 64px; font-size: 16px; letter-spacing: 3px; padding: 5px 6px 4px; }
+  #menuFightBtn { padding: 11px 0 9px; font-size: 17px; letter-spacing: 4px; }
+  #menuHint { font-size: 9.5px; }
 }
 
 /* ---------- fighter plates ---------- */
@@ -868,7 +903,7 @@ body.fighting #topbar { display: none; }
   align-items: center;
   gap: 10px;
   /* top clears the fixed broadcast nav */
-  padding: max(52px, calc(env(safe-area-inset-top) + 40px)) 12px max(10px, env(safe-area-inset-bottom));
+  padding: max(48px, calc(env(safe-area-inset-top) + 36px)) 12px max(10px, env(safe-area-inset-bottom));
   background: linear-gradient(180deg,
     rgba(4, 6, 12, 0.92) 0%, rgba(4, 6, 12, 0.55) 14%, rgba(4, 6, 12, 0.08) 30%,
     rgba(4, 6, 12, 0.02) 52%, rgba(4, 6, 12, 0.6) 72%, rgba(4, 6, 12, 0.95) 100%);
