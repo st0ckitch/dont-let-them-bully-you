@@ -572,8 +572,8 @@ let simSpeed = 1; // 1 | 2 | 4 — multiplies fixed-step consumption, never step
 let simPaused = false;
 let portraits = {}; // face thumbs, reused by roster tiles, corner cards, rankings
 const fightStats = {
-  a: { sig: 0, td: 0, ctrl: 0, dmg: 0, crit: 0 },
-  b: { sig: 0, td: 0, ctrl: 0, dmg: 0, crit: 0 },
+  a: { sig: 0, td: 0, ctrl: 0, dmg: 0, crit: 0, stam: 100 },
+  b: { sig: 0, td: 0, ctrl: 0, dmg: 0, crit: 0, stam: 100 },
 };
 const TD_MOVES = new Set(['leg_sweep', 'sweeping_kick', 'backflip_kick']); // count as sweeps/takedowns
 const fmtCtrl = sec => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`;
@@ -605,14 +605,39 @@ function updateCounters() {
 }
 
 function resetFightStats() {
-  for (const s of Object.values(fightStats)) { s.sig = s.td = s.ctrl = s.dmg = s.crit = 0; }
+  for (const s of Object.values(fightStats)) { s.sig = s.td = s.ctrl = s.dmg = s.crit = 0; s.stam = 100; }
   updateCounters();
+  updateStamina();
+}
+
+// cosmetic broadcast stamina: drains with output, recovers on the stool.
+// Display-only — never touches the sim.
+function updateStamina() {
+  $('#sbStamA').style.width = `${fightStats.a.stam}%`;
+  $('#sbStamB').style.width = `${fightStats.b.stam}%`;
+}
+
+// ---------- live event feed ----------
+const FEED_MAX = 6;
+function feedClear() {
+  $('#feedRows').innerHTML = '';
+}
+function feedPush(tag, text, delta = '') {
+  if (skipping) return;
+  const rows = $('#feedRows');
+  const row = document.createElement('div');
+  row.className = 'feedRow';
+  row.innerHTML = `<span class="fTime">${$('#sbClock').textContent}</span>` +
+    `<span class="fTag ${tag}">${tag === 'red' ? (fighterA?.cfg.short || 'RED') : tag === 'grn' ? (fighterB?.cfg.short || 'GRN') : 'SYS'}</span>` +
+    `<span class="fText">${text}</span><span class="fDelta">${delta}</span>`;
+  rows.prepend(row);
+  while (rows.children.length > FEED_MAX) rows.lastChild.remove();
 }
 
 function setupBroadcast() {
   const surname = f => f.cfg.name.split(' ').pop().toUpperCase();
   $('#matchTitle').textContent = `${surname(fighterA)} VS ${surname(fighterB)}`;
-  for (const [f, suf, corner] of [[fighterA, 'A', 'BLUE'], [fighterB, 'B', 'RED']]) {
+  for (const [f, suf, corner] of [[fighterA, 'A', 'RED'], [fighterB, 'B', 'GREEN']]) {
     $(`#sbName${suf}`).textContent = f.cfg.name.toUpperCase();
     $(`#sbTag${suf}`).textContent = `“${f.cfg.nick.toUpperCase()}” · ${corner} CORNER`;
     $(`#ccName${suf}`).textContent = f.cfg.name.toUpperCase();
@@ -623,6 +648,9 @@ function setupBroadcast() {
     else img.style.display = 'none';
   }
   resetFightStats();
+  feedClear();
+  $('#feedMeta').textContent = 'ROUND 1';
+  $('#feed').classList.remove('hidden');
   $('#broadcast').classList.remove('hidden');
 }
 
@@ -630,7 +658,7 @@ function renderStatSheet() {
   const A = fightStats.a, B = fightStats.b;
   const rows = [
     ['SIG. STRIKES', 'sig', A.sig, B.sig],
-    ['SWEEPS', 'td', A.td, B.td],
+    ['TAKEDOWNS', 'td', A.td, B.td],
     ['CTRL TIME', 'ctrl', fmtCtrl(A.ctrl), fmtCtrl(B.ctrl)],
     ['CRITS', 'crit', A.crit, B.crit],
     ['TOTAL DAMAGE', 'dmg', Math.round(A.dmg), Math.round(B.dmg)],
@@ -669,7 +697,7 @@ let skipping = false; // mutes per-hit SFX/DOM spam while the skip loop burns st
 function skipToResult() {
   if (!engine || !fighterA || !fighterB) return;
   simPaused = false;
-  $('#pauseBtn').textContent = '⏸ PAUSE SIM';
+  $('#pauseLabel').textContent = 'Pause sim';
   // deterministic fast-forward: burn fixed steps until the verdict lands
   skipping = true;
   try {
@@ -698,9 +726,7 @@ function updateHP() {
   }
   for (const [f, suf] of [[fighterA, 'A'], [fighterB, 'B']]) {
     $(`#sbHp${suf}`).textContent = Math.max(0, Math.round(f.hp));
-    const fill = $(`#sbFill${suf}`);
-    fill.style.width = `${Math.max(0, f.hp)}%`;
-    fill.style.background = hpColor(f.hp);
+    $(`#sbFill${suf}`).style.width = `${Math.max(0, f.hp)}%`;
     $(`#sbGhost${suf}`).style.width = `${Math.max(0, f.hp)}%`;
   }
 }
@@ -709,6 +735,7 @@ const engineCallbacks = {
   onHP: updateHP,
   onLine: line => {
     if (skipping) return;
+    if (/^[🔔⚖🧾😵🏆]/u.test(line)) feedPush('sys', line.replace(/^[^ ]+ /, ''));
     const el = $('#commentary');
     el.textContent = line;
     el.classList.remove('pop');
@@ -735,8 +762,14 @@ const engineCallbacks = {
       if (crit) s.crit += 1;
       if (TD_MOVES.has(moveKey)) s.td += 1;
       s.ctrl += crit ? 1.1 : 0.45; // seconds the hit keeps the opponent reeling
+      s.stam = Math.max(25, s.stam - 2);
     }
     if (skipping) return; // stats above still count; the DOM/flash spam doesn't
+    updateStamina();
+    if (atk && moveKey) {
+      feedPush(atk === fighterA ? 'red' : 'grn',
+        `${atk.cfg.short} lands the ${moveKey.replace(/_/g, ' ')}`, `−${dmg}`);
+    }
     // mobile keeps the top plates, desktop fights show the score band — pop on both
     const card = def === fighterA ? $('#card-a') : $('#card-b');
     const band = def === fighterA ? document.querySelector('.sbA') : document.querySelector('.sbB');
@@ -768,6 +801,7 @@ const engineCallbacks = {
   },
   onRound: (() => {
     let last = '';
+    let lastRound = 1;
     return (round, tLeft) => {
       const txt = `0:${String(Math.ceil(tLeft)).padStart(2, '0')}`;
       const memo = `${round}|${txt}`;
@@ -777,6 +811,12 @@ const engineCallbacks = {
         $('#roundClock').textContent = txt;
         $('#sbRound').textContent = `ROUND ${round} OF 3`;
         $('#sbClock').textContent = txt;
+        $('#feedMeta').textContent = `ROUND ${round}`;
+        if (round !== lastRound) {
+          lastRound = round;
+          for (const s of Object.values(fightStats)) s.stam = Math.min(100, s.stam + 26);
+          updateStamina();
+        }
       }
     };
   })(),
@@ -802,7 +842,7 @@ function startMatch(idA, idB, seed = null) {
   engine = new Engine(fighterA, fighterB, engineCallbacks);
   menuOpen = false;
   simPaused = false;
-  $('#pauseBtn').textContent = '⏸ PAUSE SIM';
+  $('#pauseLabel').textContent = 'Pause sim';
   document.body.classList.remove('menuOpen');
   document.body.classList.add('fighting');
   $('#menu').classList.add('hidden');
@@ -1187,8 +1227,10 @@ function doRematch(seed) {
   // finish our copy first (same shared stream) so the new seed starts clean
   if ($('#banner').classList.contains('hidden')) skipToResult();
   simPaused = false;
-  $('#pauseBtn').textContent = '⏸ PAUSE SIM';
+  $('#pauseLabel').textContent = 'Pause sim';
   resetFightStats();
+  feedClear();
+  $('#feedMeta').textContent = 'ROUND 1';
   $('#banner').classList.add('hidden');
   $('#confetti').innerHTML = '';
   setFightRng(seed == null ? null : seededRng(seed));
@@ -1280,7 +1322,7 @@ $('#changeBtn').addEventListener('click', () => {
 // ---------- broadcast controls ----------
 $('#pauseBtn').addEventListener('click', () => {
   simPaused = !simPaused;
-  $('#pauseBtn').textContent = simPaused ? '▶ RESUME SIM' : '⏸ PAUSE SIM';
+  $('#pauseLabel').textContent = simPaused ? 'Resume sim' : 'Pause sim';
 });
 
 document.querySelectorAll('.speedBtn').forEach(b =>

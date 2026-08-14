@@ -108,6 +108,7 @@ export const SOSO = {
   height: 1.78,
   victoryClip: 'muscle_flex',
   voice: 'assets/sounds/soso_win.m4a',
+  announce: 'assets/sounds/soso_announce.mp3', // Buffer-style walk-out line at the opening bell
   // teenage prodigy: fastest man in the roster with a bottomless gas tank
   // and finishing instinct, green everywhere else — no grappling, chin still
   // developing. powerKO (not striking) is the buff lever here: flash KOs
