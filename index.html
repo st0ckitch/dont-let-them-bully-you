@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>MMA Mega Fight — Merab · Ilia · Davit</title>
+  <title>Flick MMA</title>
   <link rel="icon" href="data:," />
   <link rel="stylesheet" href="./src/style.css" />
   <script type="importmap">
@@ -13,6 +13,89 @@
 <body>
   <canvas id="scene"></canvas>
   <div id="ui">
+    <nav id="bnav">
+      <span id="bnavBrand">🥊 FLICK MMA</span>
+      <div id="bnavTabs">
+        <button class="btab" data-nav="fight">FIGHT</button>
+        <button class="btab" data-nav="roster">ROSTER</button>
+        <button class="btab" data-nav="rankings">RANKINGS</button>
+        <button class="btab" data-nav="lobby">LOBBY</button>
+      </div>
+    </nav>
+    <div id="broadcast" class="hidden">
+      <div id="matchHeader">
+        <div id="matchTitleWrap">
+          <div id="matchTitle"></div>
+          <div id="matchSub">Open weight · 3 × 0:30 rounds · Auto-sim in progress</div>
+        </div>
+        <div id="matchControls">
+          <button id="pauseBtn" class="bcBtn bcRed">⏸ PAUSE SIM</button>
+          <div id="speedSeg" role="group" aria-label="Sim speed">
+            <button class="speedBtn sel" data-speed="1">1×</button>
+            <button class="speedBtn" data-speed="2">2×</button>
+            <button class="speedBtn" data-speed="4">4×</button>
+          </div>
+          <button id="statsBtn" class="bcBtn">📊 STAT BREAKDOWN</button>
+          <button id="skipBtn" class="bcBtn">⏭ SKIP TO RESULT</button>
+        </div>
+      </div>
+      <div id="scoreBand">
+        <div class="sbSide sbA">
+          <div class="sbHp" id="sbHpA">100</div>
+          <div class="sbInfo">
+            <div class="sbName" id="sbNameA"></div>
+            <div class="sbTag" id="sbTagA"></div>
+            <div class="sbBarWrap"><div class="sbGhost" id="sbGhostA"></div><div class="sbFill" id="sbFillA"></div></div>
+          </div>
+        </div>
+        <div id="sbCenter">
+          <div id="sbRound">ROUND 1 OF 3</div>
+          <div id="sbClock">0:30</div>
+        </div>
+        <div class="sbSide sbB">
+          <div class="sbInfo">
+            <div class="sbName" id="sbNameB"></div>
+            <div class="sbTag" id="sbTagB"></div>
+            <div class="sbBarWrap"><div class="sbGhost" id="sbGhostB"></div><div class="sbFill" id="sbFillB"></div></div>
+          </div>
+          <div class="sbHp" id="sbHpB">100</div>
+        </div>
+      </div>
+      <div class="ccard ccA">
+        <div class="ccHead">
+          <img id="ccImgA" alt="" />
+          <div class="ccWho">
+            <div class="ccName" id="ccNameA"></div>
+            <div class="ccRec" id="ccRecA"></div>
+          </div>
+          <span class="ccCorner ccBlue">BLUE</span>
+        </div>
+        <div class="ccStats" id="ccStatsA"></div>
+        <div class="ccCounts">
+          <div><b id="ccSigA">0</b><span>SIG. STR</span></div>
+          <div><b id="ccTdA">0</b><span>SWEEPS</span></div>
+          <div><b id="ccCtA">0:00</b><span>CTRL TIME</span></div>
+        </div>
+      </div>
+      <div class="ccard ccB">
+        <div class="ccHead">
+          <img id="ccImgB" alt="" />
+          <div class="ccWho">
+            <div class="ccName" id="ccNameB"></div>
+            <div class="ccRec" id="ccRecB"></div>
+          </div>
+          <span class="ccCorner ccRed">RED</span>
+        </div>
+        <div class="ccStats" id="ccStatsB"></div>
+        <div class="ccCounts">
+          <div><b id="ccSigB">0</b><span>SIG. STR</span></div>
+          <div><b id="ccTdB">0</b><span>SWEEPS</span></div>
+          <div><b id="ccCtB">0:00</b><span>CTRL TIME</span></div>
+        </div>
+      </div>
+    </div>
+    <div id="statSheet" class="hidden"></div>
+    <div id="rankings" class="hidden"></div>
     <div id="topbar">
       <div class="plate blue" id="card-a">
         <div class="plateHead">
@@ -103,7 +186,7 @@
       </div>
     </div>
     <div id="loading">
-      <div id="loadTitle"><em>MMA</em> <span>MEGA</span> <em>FIGHT</em></div>
+      <div id="loadTitle"><em>FLICK</em> <span>·</span> <em>MMA</em></div>
       <div id="loadBar"><div id="loadFill"></div></div>
       <div id="loadText">Loading arena…</div>
     </div>

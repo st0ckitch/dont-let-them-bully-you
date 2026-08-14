@@ -173,12 +173,31 @@ class FX {
 
   loadVoices(cfgs) {
     this.voices = {};
+    this.announces = {};
     for (const c of cfgs) {
       if (c.voice) {
         const a = new Audio(c.voice);
         a.preload = 'auto';
         this.voices[c.id] = a;
       }
+      if (c.announce) {
+        const a = new Audio(c.announce);
+        a.preload = 'auto';
+        this.announces[c.id] = a;
+      }
+    }
+  }
+
+  // ring-announcer walk-out line at the opening bell
+  playAnnounce(cfg) {
+    const a = this.announces?.[cfg.id];
+    if (!a) return;
+    try {
+      a.currentTime = 0;
+      a.volume = 1;
+      a.play().catch(() => {});
+    } catch {
+      /* ignore */
     }
   }
 
@@ -548,6 +567,125 @@ let selB = 'ilia';
 let activeSide = 'A'; // which corner the next roster tap assigns (MK-style: alternates)
 let menuOpen = false;
 
+// ---------- broadcast chrome state ----------
+let simSpeed = 1; // 1 | 2 | 4 — multiplies fixed-step consumption, never step size
+let simPaused = false;
+let portraits = {}; // face thumbs, reused by roster tiles, corner cards, rankings
+const fightStats = {
+  a: { sig: 0, td: 0, ctrl: 0, dmg: 0, crit: 0 },
+  b: { sig: 0, td: 0, ctrl: 0, dmg: 0, crit: 0 },
+};
+const TD_MOVES = new Set(['leg_sweep', 'sweeping_kick', 'backflip_kick']); // count as sweeps/takedowns
+const fmtCtrl = sec => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`;
+
+function statRowsHTML(cfg) {
+  return [
+    ['STR', cfg.stats.striking], ['GRP', cfg.stats.grappling], ['CAR', cfg.stats.cardio],
+    ['CHN', cfg.stats.chin], ['SPD', cfg.stats.speed],
+  ].map(([n, v]) => `<div class="skill"><span>${n}</span><div class="sbar"><div style="width:${v}%"></div></div><b>${v}</b></div>`).join('');
+}
+
+function updateCounters() {
+  for (const [side, suf] of [['a', 'A'], ['b', 'B']]) {
+    const s = fightStats[side];
+    $(`#ccSig${suf}`).textContent = s.sig;
+    $(`#ccTd${suf}`).textContent = s.td;
+    $(`#ccCt${suf}`).textContent = fmtCtrl(s.ctrl);
+  }
+  // targeted cell updates — rewriting the sheet's innerHTML mid-exchange
+  // would replace the CLOSE button between the user's tap and the click
+  if (!$('#statSheet').classList.contains('hidden')) {
+    for (const [k, fmt] of [['sig', v => v], ['td', v => v], ['ctrl', fmtCtrl], ['crit', v => v], ['dmg', Math.round]]) {
+      for (const side of ['a', 'b']) {
+        const cell = document.querySelector(`[data-ss="${side}-${k}"]`);
+        if (cell) cell.textContent = fmt(fightStats[side][k]);
+      }
+    }
+  }
+}
+
+function resetFightStats() {
+  for (const s of Object.values(fightStats)) { s.sig = s.td = s.ctrl = s.dmg = s.crit = 0; }
+  updateCounters();
+}
+
+function setupBroadcast() {
+  const surname = f => f.cfg.name.split(' ').pop().toUpperCase();
+  $('#matchTitle').textContent = `${surname(fighterA)} VS ${surname(fighterB)}`;
+  for (const [f, suf, corner] of [[fighterA, 'A', 'BLUE'], [fighterB, 'B', 'RED']]) {
+    $(`#sbName${suf}`).textContent = f.cfg.name.toUpperCase();
+    $(`#sbTag${suf}`).textContent = `“${f.cfg.nick.toUpperCase()}” · ${corner} CORNER`;
+    $(`#ccName${suf}`).textContent = f.cfg.name.toUpperCase();
+    $(`#ccRec${suf}`).textContent = `${f.cfg.record || '0–0–0'} · ${f.cfg.stance || 'Orthodox'}`;
+    $(`#ccStats${suf}`).innerHTML = statRowsHTML(f.cfg);
+    const img = $(`#ccImg${suf}`);
+    if (portraits[f.cfg.id]) { img.src = portraits[f.cfg.id]; img.style.display = ''; }
+    else img.style.display = 'none';
+  }
+  resetFightStats();
+  $('#broadcast').classList.remove('hidden');
+}
+
+function renderStatSheet() {
+  const A = fightStats.a, B = fightStats.b;
+  const rows = [
+    ['SIG. STRIKES', 'sig', A.sig, B.sig],
+    ['SWEEPS', 'td', A.td, B.td],
+    ['CTRL TIME', 'ctrl', fmtCtrl(A.ctrl), fmtCtrl(B.ctrl)],
+    ['CRITS', 'crit', A.crit, B.crit],
+    ['TOTAL DAMAGE', 'dmg', Math.round(A.dmg), Math.round(B.dmg)],
+  ];
+  $('#statSheet').innerHTML = `<div class="sheetCard">
+    <div class="sheetTitle">STAT BREAKDOWN</div>
+    <div class="sheetSub">${fighterA ? fighterA.cfg.short : ''} <em>vs</em> ${fighterB ? fighterB.cfg.short : ''}</div>
+    <table>${rows.map(([n, k, a, b]) => `<tr><td class="l" data-ss="a-${k}">${a}</td><th>${n}</th><td class="r" data-ss="b-${k}">${b}</td></tr>`).join('')}</table>
+    <button class="sheetClose" data-close="statSheet">CLOSE</button>
+  </div>`;
+}
+
+// tuned Monte-Carlo win rates vs the field (see config.js balance notes)
+const RANK_WR = { soso: 54, gigi: 52, levan: 51, dato: 51, david: 50, ilia: 49, davit: 48, cotne: 48, merab: 46 };
+function renderRankings() {
+  const ranked = [...FIGHTERS].sort((x, y) => (RANK_WR[y.id] || 50) - (RANK_WR[x.id] || 50));
+  $('#rankings').innerHTML = `<div class="sheetCard">
+    <div class="sheetTitle">RANKINGS</div>
+    <div class="sheetSub">simulated win rate vs the field</div>
+    <table class="rankTable">${ranked.map((c, i) => `<tr>
+      <td class="rkNum">${i + 1}</td>
+      <td class="rkImg">${portraits[c.id] ? `<img src="${portraits[c.id]}" alt="">` : c.flag}</td>
+      <td class="rkWho"><b>${c.name.toUpperCase()}</b><span>“${c.nick.toUpperCase()}” · ${c.record || ''}</span></td>
+      <td class="rkWr">${RANK_WR[c.id] || 50}%</td>
+    </tr>`).join('')}</table>
+    <button class="sheetClose" data-close="rankings">CLOSE</button>
+  </div>`;
+}
+
+function updateNavTabs(active) {
+  document.querySelectorAll('.btab').forEach(b => b.classList.toggle('sel', b.dataset.nav === active));
+}
+
+let skipping = false; // mutes per-hit SFX/DOM spam while the skip loop burns steps
+
+function skipToResult() {
+  if (!engine || !fighterA || !fighterB) return;
+  simPaused = false;
+  $('#pauseBtn').textContent = '⏸ PAUSE SIM';
+  // deterministic fast-forward: burn fixed steps until the verdict lands
+  skipping = true;
+  try {
+    let guard = 60 * 400;
+    while (guard-- && $('#banner').classList.contains('hidden')) {
+      engine.update(SIM_STEP);
+      fighterA.update(SIM_STEP);
+      fighterB.update(SIM_STEP);
+    }
+  } finally {
+    skipping = false;
+  }
+  updateHP();
+  updateCounters();
+}
+
 function updateHP() {
   if (!fighterA) return;
   for (const [f, id, gid] of [[fighterA, '#hp-a', '#hpg-a'], [fighterB, '#hp-b', '#hpg-b']]) {
@@ -558,11 +696,19 @@ function updateHP() {
     el.parentElement.setAttribute('aria-valuenow', Math.round(f.hp));
     el.parentElement.setAttribute('aria-valuetext', `${Math.round(f.hp)} HP`);
   }
+  for (const [f, suf] of [[fighterA, 'A'], [fighterB, 'B']]) {
+    $(`#sbHp${suf}`).textContent = Math.max(0, Math.round(f.hp));
+    const fill = $(`#sbFill${suf}`);
+    fill.style.width = `${Math.max(0, f.hp)}%`;
+    fill.style.background = hpColor(f.hp);
+    $(`#sbGhost${suf}`).style.width = `${Math.max(0, f.hp)}%`;
+  }
 }
 
 const engineCallbacks = {
   onHP: updateHP,
   onLine: line => {
+    if (skipping) return;
     const el = $('#commentary');
     el.textContent = line;
     el.classList.remove('pop');
@@ -570,21 +716,36 @@ const engineCallbacks = {
     el.classList.add('pop');
   },
   onImpact: (heavy, crit, kind) => {
+    if (skipping) return;
     fx.impact(kind, heavy, crit);
     addShake(crit ? 0.2 : heavy ? 0.13 : 0.06);
   },
   onCrit: atk => {
+    if (skipping) return;
     fx.critVoice(atk.cfg);
     fx.duckMusic();
   },
-  onDodge: () => fx.whoosh(),
-  onBlock: heavy => fx.blockHit(heavy),
-  onDamage: (def, dmg, crit) => {
+  onDodge: () => { if (!skipping) fx.whoosh(); },
+  onBlock: heavy => { if (!skipping) fx.blockHit(heavy); },
+  onDamage: (def, dmg, crit, atk, moveKey) => {
+    if (atk) {
+      const s = fightStats[atk === fighterA ? 'a' : 'b'];
+      s.sig += 1;
+      s.dmg += dmg;
+      if (crit) s.crit += 1;
+      if (TD_MOVES.has(moveKey)) s.td += 1;
+      s.ctrl += crit ? 1.1 : 0.45; // seconds the hit keeps the opponent reeling
+    }
+    if (skipping) return; // stats above still count; the DOM/flash spam doesn't
+    // mobile keeps the top plates, desktop fights show the score band — pop on both
     const card = def === fighterA ? $('#card-a') : $('#card-b');
+    const band = def === fighterA ? document.querySelector('.sbA') : document.querySelector('.sbB');
     popDamage(card, dmg, crit);
+    if (band) popDamage(band, dmg, crit);
     card.classList.remove('hurt');
     void card.offsetWidth;
     card.classList.add('hurt');
+    if (atk) updateCounters();
   },
   onKO: (winner, loser, info) => {
     fx.stopMusic();
@@ -614,6 +775,8 @@ const engineCallbacks = {
         last = memo;
         $('#roundLabel').textContent = `R${round}`;
         $('#roundClock').textContent = txt;
+        $('#sbRound').textContent = `ROUND ${round} OF 3`;
+        $('#sbClock').textContent = txt;
       }
     };
   })(),
@@ -638,8 +801,17 @@ function startMatch(idA, idB, seed = null) {
   setPlate('b', fighterB.cfg);
   engine = new Engine(fighterA, fighterB, engineCallbacks);
   menuOpen = false;
+  simPaused = false;
+  $('#pauseBtn').textContent = '⏸ PAUSE SIM';
   document.body.classList.remove('menuOpen');
+  document.body.classList.add('fighting');
   $('#menu').classList.add('hidden');
+  $('#rankings').classList.add('hidden');
+  $('#statSheet').classList.add('hidden');
+  setupBroadcast();
+  updateNavTabs('fight');
+  // ring announcer walk-out line (Soso's Buffer-style intro lives here)
+  for (const f of [fighterA, fighterB]) if (f.cfg.announce) fx.playAnnounce(f.cfg);
   fx.bell();
   fx.startMusic();
   engine.start();
@@ -727,7 +899,12 @@ function openMenu() {
   menuOpen = true;
   readyA = readyB = false; // a fresh select round always re-arms READY
   document.body.classList.add('menuOpen');
+  document.body.classList.remove('fighting');
+  $('#broadcast').classList.add('hidden');
+  $('#statSheet').classList.add('hidden');
+  $('#rankings').classList.add('hidden');
   $('#menu').classList.remove('hidden');
+  updateNavTabs('roster');
   refreshMenu();
   updateMenuPreview();
   updateNetUi();
@@ -924,10 +1101,14 @@ function onNetMsg(d) {
       doRematch(d.seed);
       break;
     case 'rematchReq':
-      if (net?.isHost) {
+      // engine gate: a host already back in the menu must not launch the
+      // guest into a solo "rematch" — steer both sides to the lobby instead
+      if (net?.isHost && engine) {
         const seed = (Math.random() * 0x7fffffff) | 0;
         net.send({ t: 'rematch', seed });
         doRematch(seed);
+      } else if (net?.isHost) {
+        net.send({ t: 'menu' });
       }
       break;
     case 'menu':
@@ -1002,6 +1183,12 @@ function updateNetUi() {
 
 function doRematch(seed) {
   if (!engine) return; // a 'rematch' can land after this side already left to the menu
+  // if the opponent skipped ahead and rematched while WE are still mid-fight,
+  // finish our copy first (same shared stream) so the new seed starts clean
+  if ($('#banner').classList.contains('hidden')) skipToResult();
+  simPaused = false;
+  $('#pauseBtn').textContent = '⏸ PAUSE SIM';
+  resetFightStats();
   $('#banner').classList.add('hidden');
   $('#confetti').innerHTML = '';
   setFightRng(seed == null ? null : seededRng(seed));
@@ -1090,6 +1277,76 @@ $('#changeBtn').addEventListener('click', () => {
   closeBannerToMenu();
 });
 
+// ---------- broadcast controls ----------
+$('#pauseBtn').addEventListener('click', () => {
+  simPaused = !simPaused;
+  $('#pauseBtn').textContent = simPaused ? '▶ RESUME SIM' : '⏸ PAUSE SIM';
+});
+
+document.querySelectorAll('.speedBtn').forEach(b =>
+  b.addEventListener('click', () => {
+    simSpeed = Number(b.dataset.speed) || 1;
+    document.querySelectorAll('.speedBtn').forEach(x => x.classList.toggle('sel', x === b));
+  }),
+);
+
+$('#skipBtn').addEventListener('click', () => skipToResult());
+
+$('#statsBtn').addEventListener('click', () => {
+  const sheet = $('#statSheet');
+  if (sheet.classList.contains('hidden')) {
+    renderStatSheet();
+    sheet.classList.remove('hidden');
+  } else sheet.classList.add('hidden');
+});
+
+// overlay CLOSE buttons (stat sheet + rankings render their own)
+document.addEventListener('click', e => {
+  const close = e.target?.dataset?.close;
+  if (close) {
+    $(`#${close}`).classList.add('hidden');
+    if (close === 'rankings') updateNavTabs(menuOpen ? 'roster' : 'fight');
+  }
+});
+
+document.querySelectorAll('.btab').forEach(b =>
+  b.addEventListener('click', () => {
+    if (!Object.keys(fighters).length) return; // still loading — nothing to navigate
+    const nav = b.dataset.nav;
+    $('#rankings').classList.add('hidden');
+    if (nav === 'rankings') {
+      $('#statSheet').classList.add('hidden');
+      renderRankings();
+      $('#rankings').classList.remove('hidden');
+      updateNavTabs('rankings');
+      return;
+    }
+    if (nav === 'fight') {
+      // in the menu, FIGHT doubles as the start button; mid-fight it's home
+      if (menuOpen) {
+        if (!$('#menuFightBtn').disabled) $('#menuFightBtn').click();
+        else updateNavTabs('roster'); // WAITING… — nothing to start yet
+      } else updateNavTabs('fight');
+      return;
+    }
+    // roster / lobby both live on the select screen; leaving a live online
+    // fight must take BOTH players out, exactly like the CHANGE button
+    if (!menuOpen) {
+      if (net && netConnected()) net.send({ t: 'menu' });
+      $('#banner').classList.add('hidden');
+      $('#confetti').innerHTML = '';
+      openMenu();
+    }
+    updateNavTabs(nav);
+    if (nav === 'lobby') {
+      const bar = $('#netBar');
+      bar.classList.remove('flash');
+      void bar.offsetWidth;
+      bar.classList.add('flash');
+    }
+  }),
+);
+
 // ---------- Async load ----------
 const loadFill = $('#loadFill');
 const loadText = $('#loadText');
@@ -1118,7 +1375,8 @@ loadAssets(FIGHTERS, (loaded, total) => {
     fighters[cfg.id] = f;
   });
   fx.loadVoices(FIGHTERS);
-  buildMenu(makeThumbs());
+  portraits = makeThumbs();
+  buildMenu(portraits);
   $('#loading').classList.add('hidden');
   openMenu();
   window.__fight = { fighters, simFight };
@@ -1159,8 +1417,10 @@ renderer.setAnimationLoop(() => {
 
   // Fixed-step sim: seeded multiplayer fights must consume the rng stream at
   // identical sim times on both clients, so the engine and fighters advance
-  // in 1/60s quanta regardless of the device's frame rate.
-  simAcc = Math.min(simAcc + dt, 0.2);
+  // in 1/60s quanta regardless of the device's frame rate. Pause/speed only
+  // change how many quanta this client consumes per frame — never their size,
+  // so a 4× viewer and a paused viewer still replay the identical fight.
+  simAcc = Math.min(simAcc + (simPaused && engine ? 0 : dt * (engine ? simSpeed : 1)), 0.25);
   while (simAcc >= SIM_STEP) {
     simAcc -= SIM_STEP;
     engine?.update(SIM_STEP);

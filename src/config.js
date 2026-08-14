@@ -1,5 +1,6 @@
 export const MERAB = {
   id: 'merab', short: 'MERAB', name: 'Merab Dvalishvili', nick: 'The Machine', flag: '🇬🇪',
+  record: '19–4–0', stance: 'Orthodox',
   body: 'assets/merab_body.glb',
   rig: 'athletic',
   builtin: 'idle', // clip that rides along inside the body GLB
@@ -12,6 +13,7 @@ export const MERAB = {
 
 export const ILIA = {
   id: 'ilia', short: 'ILIA', name: 'Ilia Topuria', nick: 'El Matador', flag: '🇬🇪🇪🇸',
+  record: '17–0–0', stance: 'Orthodox',
   body: 'assets/ilia_body.glb',
   rig: 'athletic',
   builtin: 'walk',
@@ -24,6 +26,7 @@ export const ILIA = {
 
 export const DAVIT = {
   id: 'davit', short: 'DAVIT', name: 'Davit Panjakidze', nick: 'The Hoking', flag: '🇬🇪',
+  record: '12–3–0', stance: 'Southpaw',
   body: 'assets/davit_body.glb',
   rig: 'portrait',
   builtin: 'uppercut',
@@ -38,6 +41,7 @@ export const DAVIT = {
 
 export const COTNE = {
   id: 'cotne', short: 'COTNE', name: 'Cotne Patchuashvili', nick: 'The Fatso', flag: '🇬🇪',
+  record: '9–1–0', stance: 'Orthodox',
   body: 'assets/cotne_body.glb',
   rig: 'bigguy',
   builtin: 'boom_dance',
@@ -52,6 +56,7 @@ export const COTNE = {
 
 export const DATO = {
   id: 'dato', short: 'DATO', name: 'Dato Witaishvili', nick: 'The Firuz', flag: '🇬🇪',
+  record: '11–2–0', stance: 'Southpaw',
   body: 'assets/dato_body.glb',
   rig: 'dato',
   builtin: 'funny_dance',
@@ -66,6 +71,7 @@ export const DATO = {
 
 export const LEVAN = {
   id: 'levan', short: 'LEVAN', name: 'Levan Kuprava', nick: 'The CPO', flag: '🇬🇪',
+  record: '13–2–0', stance: 'Orthodox',
   body: 'assets/levan_body.glb',
   rig: 'levan',
   builtin: 'gangnam_dance',
@@ -80,6 +86,7 @@ export const LEVAN = {
 
 export const DAVID = {
   id: 'david', short: 'DAVID', name: 'David Kometiani', nick: 'The CEO', flag: '🇬🇪',
+  record: '10–1–0', stance: 'Orthodox',
   body: 'assets/david_body.glb',
   rig: 'david',
   builtin: 'funny_dance_3',
@@ -94,6 +101,7 @@ export const DAVID = {
 
 export const SOSO = {
   id: 'soso', short: 'SOSO', name: 'Soso Ananov', nick: 'The 17', flag: '🇬🇪',
+  record: '5–0–0', stance: 'Southpaw',
   body: 'assets/soso_body.glb',
   rig: 'soso',
   builtin: 'funky_walk',
@@ -113,7 +121,8 @@ export const SOSO = {
 };
 
 export const GIGI = {
-  id: 'gigi', short: 'GIGI', name: 'Gigi Gvaramia', nick: 'The CTO', flag: '🇬🇪',
+  id: 'gigi', short: 'GIGI', name: 'Gigi Gvaramia', nick: 'The Deputy CTO', flag: '🇬🇪',
+  record: '14–6–1', stance: 'Southpaw',
   body: 'assets/gigi_body.glb',
   rig: 'gigi',
   builtin: 'pod_groove',

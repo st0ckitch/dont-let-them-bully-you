@@ -355,6 +355,11 @@ export class Engine {
 
   start() {
     this.tasks = [];
+    // strafe must re-seed exactly like the constructor: it is the ONE piece of
+    // sim state a rematch would otherwise carry over, and _drift consumes rng
+    // when strafe.t expires — a mid-fight rematch (reachable now that skip/4x
+    // let clients' clocks diverge) would fork the seeded stream between peers
+    this.strafe = { a: 1, b: -1, t: 3 };
     this.a.reset();
     this.b.reset();
     this.a.faceToward(this.b.pos, 0, true);
@@ -682,7 +687,7 @@ export class Engine {
       def.knockback(atk.pos, out.crit ? 1.1 : heavy ? 0.8 : 0.45);
       this.cb.onImpact(heavy, out.crit, /kick|roundhouse|knee/.test(move.key) ? 'kick' : 'punch');
       if (out.crit) this.cb.onCrit?.(atk);
-      this.cb.onDamage(def, out.dmg, out.crit);
+      this.cb.onDamage(def, out.dmg, out.crit, atk, move.key); // atk+move feed the broadcast stat counters
       this.cb.onHP();
       this.cb.onLine(move === COUNTER_MOVE
         ? `🔥 ${atk.cfg.short} MAKES HIM PAY! Counter lands! −${out.dmg}`
