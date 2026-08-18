@@ -578,6 +578,56 @@ const fightStats = {
 const TD_MOVES = new Set(['leg_sweep', 'sweeping_kick', 'backflip_kick']); // count as sweeps/takedowns
 const fmtCtrl = sec => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`;
 
+// ---------- player-control mode (solo only; AUTO-SIM stays the default) ----------
+let ctlMode = false;
+let ctlStam = 100;
+let ctlDodgeCd = 0;
+const CTL_COST = { light: 16, heavy: 26, special: 34, dodge: 14 };
+
+function ctlActive() {
+  return !!engine?.ctl;
+}
+
+function updateCtlPad() {
+  $('#ctlStamFill').style.width = `${ctlStam}%`;
+  const canStrike = engine?.phase === 'cooldown' && engine?.state === 'fighting' && !engine?.roundEnding;
+  for (const [id, slot] of [['#ctlLight', 'light'], ['#ctlHeavy', 'heavy'], ['#ctlSpec', 'special']]) {
+    $(id).disabled = !canStrike || ctlStam < CTL_COST[slot];
+  }
+  $('#ctlDodge').disabled = ctlDodgeCd > 0 || ctlStam < CTL_COST.dodge || engine?.state !== 'fighting';
+}
+
+function ctlFlashStam() {
+  const w = $('#ctlStamWrap');
+  w.classList.remove('low');
+  void w.offsetWidth;
+  w.classList.add('low');
+}
+
+function ctlStrike(slot) {
+  if (!ctlActive()) return;
+  const key = fighterA.cfg.kit?.[slot];
+  const cost = CTL_COST[slot];
+  if (!key) return;
+  if (ctlStam < cost) return ctlFlashStam();
+  if (engine.playerStrike(key)) ctlStam -= cost;
+}
+
+function ctlDodge() {
+  if (!ctlActive()) return;
+  if (ctlDodgeCd > 0) return;
+  if (ctlStam < CTL_COST.dodge) return ctlFlashStam();
+  ctlDodgeCd = 1.1;
+  ctlStam -= CTL_COST.dodge;
+  engine.playerDodge();
+}
+
+function ctlGuard(held) {
+  if (!ctlActive()) return;
+  engine.playerGuard(held);
+  $('#ctlBlock').classList.toggle('held', held);
+}
+
 function statRowsHTML(cfg) {
   return [
     ['STR', cfg.stats.striking], ['GRP', cfg.stats.grappling], ['CAR', cfg.stats.cardio],
@@ -841,6 +891,16 @@ function startMatch(idA, idB, seed = null) {
   setPlate('a', fighterA.cfg);
   setPlate('b', fighterB.cfg);
   engine = new Engine(fighterA, fighterB, engineCallbacks);
+  // TAKE CONTROL is strictly solo: online fights must stay deterministic
+  if (ctlMode && !net) {
+    engine.setControlled(fighterA);
+    ctlStam = 100;
+    ctlDodgeCd = 0;
+    $('#ctlPad').classList.remove('hidden');
+    $('#ctlKeys').style.display = matchMedia('(pointer: coarse)').matches ? 'none' : '';
+  } else {
+    $('#ctlPad').classList.add('hidden');
+  }
   menuOpen = false;
   simPaused = false;
   $('#pauseLabel').textContent = 'Pause sim';
@@ -944,6 +1004,7 @@ function openMenu() {
   $('#broadcast').classList.add('hidden');
   $('#statSheet').classList.add('hidden');
   $('#rankings').classList.add('hidden');
+  $('#ctlPad').classList.add('hidden');
   $('#menu').classList.remove('hidden');
   updateNavTabs('roster');
   refreshMenu();
@@ -1183,6 +1244,7 @@ function teardownNet(message = null) {
 function updateNetUi() {
   $('#netIdle').classList.toggle('hidden', !!net);
   $('#netLive').classList.toggle('hidden', !net);
+  $('#modeSeg').classList.toggle('hidden', !!net); // online is always auto-sim
   const fight = $('#menuFightBtn');
   if (net) {
     $('#netStatus').innerHTML = netConnected()
@@ -1334,6 +1396,39 @@ document.querySelectorAll('.speedBtn').forEach(b =>
 );
 
 $('#skipBtn').addEventListener('click', () => skipToResult());
+
+// ---------- fight-mode toggle + control pad input ----------
+document.querySelectorAll('.modeBtn').forEach(b =>
+  b.addEventListener('click', () => {
+    ctlMode = b.dataset.mode === 'control';
+    document.querySelectorAll('.modeBtn').forEach(x => x.classList.toggle('sel', x === b));
+    $('#menuHint').textContent = ctlMode
+      ? 'you fight out of the RED corner — punch/kick/special to attack, hold block, time your dodges'
+      : HINT_DEFAULT;
+  }),
+);
+
+$('#ctlLight').addEventListener('click', () => ctlStrike('light'));
+$('#ctlHeavy').addEventListener('click', () => ctlStrike('heavy'));
+$('#ctlSpec').addEventListener('click', () => ctlStrike('special'));
+$('#ctlDodge').addEventListener('click', () => ctlDodge());
+$('#ctlBlock').addEventListener('pointerdown', e => { e.preventDefault(); ctlGuard(true); });
+for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) {
+  $('#ctlBlock').addEventListener(ev, () => ctlGuard(false));
+}
+
+document.addEventListener('keydown', e => {
+  if (!ctlActive() || e.repeat || e.target.tagName === 'INPUT') return;
+  const k = e.key.toLowerCase();
+  if (k === 'j') ctlStrike('light');
+  else if (k === 'k') ctlStrike('heavy');
+  else if (k === 'l') ctlStrike('special');
+  else if (k === ' ') { e.preventDefault(); ctlDodge(); }
+  else if (k === 's') ctlGuard(true);
+});
+document.addEventListener('keyup', e => {
+  if (e.key.toLowerCase() === 's') ctlGuard(false);
+});
 
 $('#statsBtn').addEventListener('click', () => {
   const sheet = $('#statSheet');
@@ -1496,6 +1591,12 @@ renderer.setAnimationLoop(() => {
     for (const f of Object.values(fighters)) {
       if (f.root.visible) f.update(SIM_STEP);
     }
+  }
+
+  if (ctlActive()) {
+    ctlStam = Math.min(100, ctlStam + dt * (engine.ctlGuard ? 4 : 10));
+    ctlDodgeCd = Math.max(0, ctlDodgeCd - dt);
+    updateCtlPad();
   }
 
   if (menuOpen) {

@@ -351,6 +351,59 @@ export class Engine {
     this.strafe = { a: 1, b: -1, t: 3 };
     this.roundSeconds = ROUND_SECONDS;
     this.activeStrikes = [];
+    // player-control mode (solo only — NEVER set in multiplayer). Every hook
+    // below is gated on this.ctl so the auto path consumes the rng stream
+    // byte-identically to a build without controls.
+    this.ctl = null;
+    this.ctlGuard = false;
+  }
+
+  // ---- player-control API ----
+  setControlled(f) {
+    this.ctl = f;
+  }
+
+  playerGuard(held) {
+    if (!this.ctl) return;
+    this.ctlGuard = held;
+    if (this.state === 'fighting' && this.ctl.state === 'idle') this.ctl.defend(held);
+  }
+
+  // trigger your own exchange — mirrors _beginExchange minus the rng picks
+  playerStrike(key) {
+    if (!this.ctl || this.state !== 'fighting' || this.phase !== 'cooldown' || this.roundEnding) return false;
+    const move = MOVES.find(m => m.key === key);
+    if (!move) return false;
+    this.atk = this.ctl;
+    this.def = this.ctl === this.a ? this.b : this.a;
+    this.move = move;
+    this.phase = 'approach';
+    this.approachT = 0;
+    this.def.defend(true);
+    return true;
+  }
+
+  // timed reactive dodge: converts incoming pre-rolled hits landing within the
+  // next 0.45s into misses, and punishes with the existing counter machinery
+  playerDodge() {
+    if (!this.ctl || this.state !== 'fighting') return false;
+    let dodged = false;
+    for (const s of this.activeStrikes) {
+      if (s.done || s.def !== this.ctl) continue;
+      let any = false;
+      for (const p of s.plan) {
+        if (p.fired || p.out.kind !== 'hit') continue;
+        const eta = p.imp.at * s.dur - s.t;
+        if (eta >= 0 && eta <= 0.45) {
+          p.out = { kind: 'miss', dmg: 0, crit: false };
+          any = true;
+        }
+      }
+      if (any && s.counterAt === null) s.counterAt = s.t + 0.15;
+      dodged = dodged || any;
+    }
+    this.ctl.evade(dodged ? 0.8 : 0.5);
+    return dodged;
   }
 
   start() {
@@ -445,9 +498,11 @@ export class Engine {
   _endExchange(waitMin = 0.5, waitMax = 1.2) {
     this.phase = 'cooldown';
     this.wait = rand(waitMin, waitMax);
+    if (this.ctl) this.wait += 0.7; // controlled fights: the AI gives you room to work
     this.activeStrikes = [];
     this.a.defend(false);
     this.b.defend(false);
+    if (this.ctl && this.ctlGuard) this.ctl.defend(true); // player's held guard survives
   }
 
   _drift(dt) {
@@ -478,6 +533,16 @@ export class Engine {
   }
 
   _beginExchange() {
+    if (this.ctl) {
+      // the player initiates their own exchanges via playerStrike; the auto
+      // scheduler only ever drives the AI side
+      this.atk = this.ctl === this.a ? this.b : this.a;
+      this.def = this.ctl;
+      this.move = pickMove(this.atk.stats);
+      this.phase = 'approach';
+      this.approachT = 0;
+      return; // the player manages their own guard
+    }
     const pA = pickAttackerProb(this.a.stats, this.b.stats);
     this.atk = rng() < pA ? this.a : this.b;
     this.def = this.atk === this.a ? this.b : this.a;
@@ -509,6 +574,8 @@ export class Engine {
   // right before each blocked impact, and possibly a counter.
   _launchStrike(atk, def, move, { bonus = 0, defense = true } = {}) {
     const dur = atk.clipDuration(move.key);
+    // a held player guard blunts incoming shots (more blocks/misses)
+    const guardAdj = this.ctl && def === this.ctl && this.ctlGuard ? -0.18 : 0;
     const strike = {
       atk, def, move, dur,
       t: 0,
@@ -516,7 +583,7 @@ export class Engine {
       counterAt: null,
       plan: move.impacts.map(imp => ({
         imp,
-        out: resolveImpactMath(move, imp, atk.stats, def.stats, bonus),
+        out: resolveImpactMath(move, imp, atk.stats, def.stats, bonus + guardAdj),
         fired: false,
       })),
     };
@@ -543,8 +610,9 @@ export class Engine {
             def.evade(0.8); // whole-body lean-back, sine peak at impact
           }
         });
-        // the dodger may fire back — counter specialists thrive here
-        if (rng() < (def.cfg.counterSkill || 0)) {
+        // the dodger may fire back — counter specialists thrive here.
+        // A CONTROLLED defender earns counters only through manual dodges.
+        if (def !== this.ctl && rng() < (def.cfg.counterSkill || 0)) {
           strike.counterAt = missT + 0.12;
         }
       }
@@ -577,8 +645,9 @@ export class Engine {
     this.phase = 'strike';
     this.activeStrikes = [];
     const { atk, def } = this;
-    // the defender may abandon defense and let one fly at the same time
-    const trade = def.state === 'idle' && rng() < tradeProb(def.stats);
+    // the defender may abandon defense and let one fly at the same time —
+    // except a CONTROLLED defender, who trades only by choosing to swing
+    const trade = def !== this.ctl && def.state === 'idle' && rng() < tradeProb(def.stats);
     if (trade) {
       def.defend(false);
       this._launchStrike(atk, def, this.move, { bonus: 0.15, defense: false });

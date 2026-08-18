@@ -1,5 +1,6 @@
 export const MERAB = {
   id: 'merab', short: 'MERAB', name: 'Merab Dvalishvili', nick: 'The Machine', flag: '🇬🇪',
+  kit: { light: 'punch_combo', heavy: 'spartan_kick', special: 'leg_sweep' }, // control-mode moveset
   record: '19–4–0', stance: 'Orthodox',
   body: 'assets/merab_body.glb',
   rig: 'athletic',
@@ -13,6 +14,7 @@ export const MERAB = {
 
 export const ILIA = {
   id: 'ilia', short: 'ILIA', name: 'Ilia Topuria', nick: 'El Matador', flag: '🇬🇪🇪🇸',
+  kit: { light: 'punch_combo_2', heavy: 'lunge_roundhouse', special: 'flying_kick' }, // control-mode moveset
   record: '17–0–0', stance: 'Orthodox',
   body: 'assets/ilia_body.glb',
   rig: 'athletic',
@@ -26,6 +28,7 @@ export const ILIA = {
 
 export const DAVIT = {
   id: 'davit', short: 'DAVIT', name: 'Davit Panjakidze', nick: 'The Hoking', flag: '🇬🇪',
+  kit: { light: 'punch_combo_4', heavy: 'high_kick', special: 'kung_fu_punch' }, // control-mode moveset
   record: '12–3–0', stance: 'Southpaw',
   body: 'assets/davit_body.glb',
   rig: 'portrait',
@@ -41,6 +44,7 @@ export const DAVIT = {
 
 export const COTNE = {
   id: 'cotne', short: 'COTNE', name: 'Cotne Patchuashvili', nick: 'The Fatso', flag: '🇬🇪',
+  kit: { light: 'hook', heavy: 'roundhouse', special: 'jumping_punch' }, // control-mode moveset
   record: '9–1–0', stance: 'Orthodox',
   body: 'assets/cotne_body.glb',
   rig: 'bigguy',
@@ -56,6 +60,7 @@ export const COTNE = {
 
 export const DATO = {
   id: 'dato', short: 'DATO', name: 'Dato Witaishvili', nick: 'The Firuz', flag: '🇬🇪',
+  kit: { light: 'punch_combo_3', heavy: 'sweeping_kick', special: 'punch_combo_5' }, // control-mode moveset
   record: '11–2–0', stance: 'Southpaw',
   body: 'assets/dato_body.glb',
   rig: 'dato',
@@ -71,6 +76,7 @@ export const DATO = {
 
 export const LEVAN = {
   id: 'levan', short: 'LEVAN', name: 'Levan Kuprava', nick: 'The CPO', flag: '🇬🇪',
+  kit: { light: 'punch_combo_2', heavy: 'double_kick', special: 'lunge_spin_kick' }, // control-mode moveset
   record: '13–2–0', stance: 'Orthodox',
   body: 'assets/levan_body.glb',
   rig: 'levan',
@@ -86,6 +92,7 @@ export const LEVAN = {
 
 export const DAVID = {
   id: 'david', short: 'DAVID', name: 'David Kometiani', nick: 'The CEO', flag: '🇬🇪',
+  kit: { light: 'uppercut', heavy: 'roundhouse', special: 'backflip_kick' }, // control-mode moveset
   record: '10–1–0', stance: 'Orthodox',
   body: 'assets/david_body.glb',
   rig: 'david',
@@ -101,6 +108,7 @@ export const DAVID = {
 
 export const SOSO = {
   id: 'soso', short: 'SOSO', name: 'Soso Ananov', nick: 'The 17', flag: '🇬🇪',
+  kit: { light: 'punch_combo', heavy: 'turn_kick', special: 'backflip_hooks' }, // control-mode moveset
   record: '5–0–0', stance: 'Southpaw',
   body: 'assets/soso_body.glb',
   rig: 'soso',
@@ -123,6 +131,7 @@ export const SOSO = {
 
 export const GIGI = {
   id: 'gigi', short: 'GIGI', name: 'Gigi Gvaramia', nick: 'The Deputy CTO', flag: '🇬🇪',
+  kit: { light: 'uppercut', heavy: 'elbow_strike', special: 'leg_sweep' }, // control-mode moveset
   record: '14–6–1', stance: 'Southpaw',
   body: 'assets/gigi_body.glb',
   rig: 'gigi',

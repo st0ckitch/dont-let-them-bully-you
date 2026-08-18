@@ -156,6 +156,17 @@
       </div>
     </div>
     <div id="confetti"></div>
+    <div id="ctlPad" class="hidden">
+      <div id="ctlStamWrap"><div id="ctlStamFill"></div></div>
+      <div id="ctlBtns">
+        <button class="ctlBtn" id="ctlBlock">🛡<span>Block</span></button>
+        <button class="ctlBtn" id="ctlDodge">💨<span>Dodge</span></button>
+        <button class="ctlBtn ctlHit" id="ctlLight">🥊<span>Punch</span></button>
+        <button class="ctlBtn ctlHit" id="ctlHeavy">🦵<span>Kick</span></button>
+        <button class="ctlBtn ctlSpec" id="ctlSpec">⚡<span>Special</span></button>
+      </div>
+      <div id="ctlKeys">J punch · K kick · L special · Space dodge · hold S block</div>
+    </div>
     <button id="gameMicBtn" class="hidden" title="Toggle microphone">🎤</button>
     <div id="menu" class="hidden">
       <div id="menuTitle">CHOOSE YOUR FIGHTERS</div>
@@ -192,6 +203,10 @@
           </div>
         </div>
         <div id="rosterBar"></div>
+        <div id="modeSeg" role="group" aria-label="Fight mode">
+          <button class="modeBtn sel" data-mode="auto">Auto-sim</button>
+          <button class="modeBtn" data-mode="control">Take control</button>
+        </div>
         <button id="menuFightBtn">FIGHT</button>
         <div id="menuHint">3 rounds × 30 seconds — win by KO, flash KO, or the judges' scorecards</div>
       </div>
