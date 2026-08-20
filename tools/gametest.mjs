@@ -28,20 +28,32 @@ function playerTurn(roster, econ, pool, r, skill) {
   let shop = pool.roll(econ.level, SHOP_SIZE);
   for (let pass = 0; pass < 3; pass++) {
     let bought = false;
+    // Same merge arithmetic the AI uses. Giving the reference player the old
+    // buggy scoring (no 3-star guard, "two 2-stars completes a 3-star") let it
+    // overbuy past its own 3-stars — which is strictly stronger, and made every
+    // AI-vs-player number meaningless.
     const ranked = shop.map((id, i) => (id ? { id, i } : null)).filter(Boolean).map(c => {
       const owned = roster.entries.filter(e => e.unitId === c.id);
       const ones = owned.filter(e => e.star === 1).length;
       const twos = owned.filter(e => e.star === 2).length;
-      let score = UNIT_BY_ID[c.id].cost * 20;
-      if (twos >= 2) score = 1000; else if (ones >= 2) score = 900;
-      else if (ones >= 1 || twos >= 1) score = 600;
+      const threes = owned.filter(e => e.star === 3).length;
+      const copies = ones + 3 * twos + 9 * threes;
+      let score;
+      if (threes > 0 || copies >= 9) score = -1;
+      else if (ones === 2 && twos === 2) score = 1200;
+      else if (ones >= 2) score = 900;
+      else if (twos >= 1) score = 700;
+      else if (ones >= 1) score = 600;
       else if (roster.entries.length < boardCapacity(econ.level)) score = 300;
+      else score = 120 + UNIT_BY_ID[c.id].cost * 45;
       return { ...c, score };
     }).sort((a, b) => b.score - a.score);
     for (const c of ranked) {
+      if (c.score < 0) continue;
       const cost = UNIT_BY_ID[c.id].cost;
       if (econ.gold < cost) continue;
-      if (c.score < 900 && econ.gold - cost < reserve) continue;
+      const flush = econ.gold >= reserve + 20;
+      if (c.score < 900 && !flush && econ.gold - cost < reserve) continue;
       if (roster.benchFull()) break;
       if (!pool.take(c.id)) continue;
       econ.spend(cost); roster.add(c.id); shop[c.i] = null; bought = true;

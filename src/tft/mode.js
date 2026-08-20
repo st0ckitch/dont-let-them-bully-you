@@ -159,18 +159,28 @@ export class AutochessMode {
     if (this.phase !== PHASE.COMBAT) return;
     this.phase = PHASE.RESOLVE;
     this.timer = RESOLVE_TIME;
+    // A draw (both boards wiped) is neutral: nobody takes damage and nobody
+    // banks a streak. Treating `!won` as "the AI won" charged the player a loss
+    // AND paid the AI a win off the same result.
+    const draw = winner === null;
     const won = winner === 'player';
-    this.econ.recordResult(won);
-    this.ai.settle(!won); // the AI banks its own income and streak too
+    if (!draw) {
+      this.econ.recordResult(won);
+      this.ai.settle(!won); // the AI banks its own income and streak too
+    } else {
+      this.econ.streak = 0;
+      this.ai.econ.streak = 0;
+      this.ai.econ.payout();
+    }
 
     let dmg = 0;
-    if (!won) {
+    if (!won && !draw) {
       const survivors = this.combat ? this.combat.living('enemy') : [];
       dmg = playerDamage(this.stage, survivors);
       this.econ.hp = Math.max(0, this.econ.hp - dmg);
     }
     const pay = this.econ.payout();
-    this.lastResult = { won, dmg, pay, draw: winner === null };
+    this.lastResult = { won, dmg, pay, draw };
     this.ui?.onRoundEnd(this.lastResult);
     this.fx?.bell?.();
     if (this.econ.hp <= 0) {
