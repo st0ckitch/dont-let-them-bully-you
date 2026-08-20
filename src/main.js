@@ -4,6 +4,9 @@ import { loadAssets } from './anim.js';
 import { Fighter3D } from './fighter3d.js';
 import { Engine, simFight, setFightRng, seededRng } from './fight.js';
 import { Net, PROTOCOL_VERSION } from './net.js';
+import { AutochessMode, PHASE as TFT_PHASE } from './tft/mode.js';
+import { AutochessUI } from './tft/ui.js';
+import { cellId as tftCellId } from './tft/hex.js';
 
 const canvas = document.querySelector('#scene');
 // perf tiers: phones get a lower pixel-ratio cap and smaller shadow maps;
@@ -578,6 +581,16 @@ const fightStats = {
 const TD_MOVES = new Set(['leg_sweep', 'sweeping_kick', 'backflip_kick']); // count as sweeps/takedowns
 const fmtCtrl = sec => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`;
 
+// ---------- autochess mode ----------
+// Entirely additive: `tft` stays null until the mode is entered, and every
+// hook below no-ops while it is. Auto-sim and control keep their exact paths.
+let tftMode = null;   // AutochessMode instance
+let tftUi = null;
+let tftActive = false;
+let selectedMode = 'auto'; // 'auto' | 'control' | 'autochess'
+let loadedAssets = null;   // { models, clipSets, overlayDeltas } — set once loading finishes
+let octagonRoot = null;    // the octagon GLB, hidden while the autochess cage is up
+
 // ---------- player-control mode (solo only; AUTO-SIM stays the default) ----------
 let ctlMode = false;
 let ctlStam = 100;
@@ -875,6 +888,7 @@ const engineCallbacks = {
 };
 
 function startMatch(idA, idB, seed = null) {
+  exitAutochess(); // an octagon fight must not run under a live autochess board
   // multiplayer passes a shared seed: both clients replay the identical fight
   setFightRng(seed == null ? null : seededRng(seed));
   readyA = readyB = false; // a READY toggle racing the start must not fire a second one
@@ -994,6 +1008,7 @@ function updateMenuPreview(changedSide = null) {
 }
 
 function openMenu() {
+  exitAutochess(); // the menu is the single funnel out of every mode
   engine = null; // stop any finished fight from simulating behind the menu
   fighterA = null;
   fighterB = null;
@@ -1359,6 +1374,12 @@ $('#menuFightBtn').addEventListener('click', () => {
     maybeHostStart();
     return;
   }
+  // autochess is strictly solo, like control mode — the `net` branch above
+  // already returned, so online lobbies can never reach it
+  if (selectedMode === 'autochess') {
+    enterAutochess();
+    return;
+  }
   startMatch(selA, selB);
 });
 
@@ -1398,15 +1419,77 @@ document.querySelectorAll('.speedBtn').forEach(b =>
 $('#skipBtn').addEventListener('click', () => skipToResult());
 
 // ---------- fight-mode toggle + control pad input ----------
+const MODE_HINTS = {
+  auto: HINT_DEFAULT,
+  control: 'you fight out of the RED corner — punch/kick/special to attack, hold block, time your dodges',
+  autochess: 'buy fighters, place them on your half, and they fight for themselves — 3 of a kind upgrades',
+};
+
 document.querySelectorAll('.modeBtn').forEach(b =>
   b.addEventListener('click', () => {
-    ctlMode = b.dataset.mode === 'control';
+    selectedMode = b.dataset.mode;
+    ctlMode = selectedMode === 'control';
     document.querySelectorAll('.modeBtn').forEach(x => x.classList.toggle('sel', x === b));
-    $('#menuHint').textContent = ctlMode
-      ? 'you fight out of the RED corner — punch/kick/special to attack, hold block, time your dodges'
-      : HINT_DEFAULT;
+    $('#menuHint').textContent = MODE_HINTS[selectedMode] || HINT_DEFAULT;
+    $('#menuFightBtn').textContent = selectedMode === 'autochess' ? 'ENTER THE CAGE' : 'FIGHT';
   }),
 );
+
+// ---------- autochess entry / exit ----------
+async function enterAutochess() {
+  if (!tftMode) {
+    tftMode = new AutochessMode({ scene, camera, assets: loadedAssets, fx, ui: null });
+    loadText.textContent = 'Loading the autochess cage…';
+    $('#loading').classList.remove('hidden');
+    try {
+      await tftMode.load((loaded, total) => {
+        loadFill.style.width = `${Math.round((loaded / Math.max(1, total)) * 100)}%`;
+      });
+    } catch (err) {
+      console.error(err);
+      loadText.textContent = `Board failed to load — ${err?.message || err}`;
+      tftMode = null;
+      return;
+    }
+    $('#loading').classList.add('hidden');
+    tftUi = new AutochessUI($('#tftUi'), tftMode, { portraits });
+    tftMode.ui = tftUi;
+  }
+
+  // park the octagon-mode fighters and chrome
+  engine = null;
+  fighterA = null;
+  fighterB = null;
+  for (const f of Object.values(fighters)) f.root.visible = false;
+  octagonRoot.visible = false;
+  menuOpen = false;
+  tftActive = true;
+  document.body.classList.remove('menuOpen');
+  document.body.classList.add('fighting', 'tftMode');
+  $('#menu').classList.add('hidden');
+  $('#broadcast').classList.add('hidden');
+  $('#topbar').classList.add('hidden');
+  $('#commentaryWrap').classList.add('hidden');
+  $('#ctlPad').classList.add('hidden');
+  $('#tftUi').classList.remove('hidden');
+  updateNavTabs('fight');
+
+  userYaw = 0;
+  userY = 0;
+  tftMode.start();
+  window.__tft = tftMode;
+}
+
+function exitAutochess() {
+  if (!tftActive) return;
+  tftActive = false;
+  tftMode?.stop();
+  octagonRoot.visible = true;
+  document.body.classList.remove('tftMode');
+  $('#tftUi').classList.add('hidden');
+  $('#topbar').classList.remove('hidden');
+  $('#commentaryWrap').classList.remove('hidden');
+}
 
 $('#ctlLight').addEventListener('click', () => ctlStrike('light'));
 $('#ctlHeavy').addEventListener('click', () => ctlStrike('heavy'));
@@ -1493,6 +1576,10 @@ loadAssets(FIGHTERS, (loaded, total) => {
   loadFill.style.width = `${Math.round((loaded / total) * 100)}%`;
   loadText.textContent = `Loading arena… ${loaded}/${total}`;
 }).then(({ models, clipSets, overlayDeltas, octagon }) => {
+  // kept for the autochess mode: it clones these models per board unit and
+  // hides the octagon while its own cage is on screen
+  loadedAssets = { models, clipSets, overlayDeltas };
+  octagonRoot = octagon;
   octagon.scale.setScalar(6.0);
   scene.add(octagon);
   octagon.updateMatrixWorld(true); // raycaster uses matrixWorld as-is
@@ -1573,6 +1660,45 @@ for (const ev of ['pointerup', 'pointercancel']) {
 }
 canvas.addEventListener('dblclick', () => { userYaw = 0; userY = 0; }); // double-tap resets the shot
 
+// ---------- autochess board interaction ----------
+// Click a hex to place the selected fighter, click an occupied hex to pick that
+// fighter up. Distinguished from a camera drag by movement threshold, so
+// orbiting the board never fires a placement.
+const _ndc = new THREE.Vector2();
+let tftDownX = 0, tftDownY = 0, tftDragged = false;
+
+function tftCellFromEvent(e) {
+  if (!tftActive || !tftMode?.board?.loaded) return null;
+  _ndc.set((e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1);
+  return tftMode.board.cellAtPointer(_ndc, camera);
+}
+
+canvas.addEventListener('pointerdown', e => {
+  if (!tftActive) return;
+  tftDownX = e.clientX;
+  tftDownY = e.clientY;
+  tftDragged = false;
+});
+
+canvas.addEventListener('pointermove', e => {
+  if (!tftActive) return;
+  if (Math.abs(e.clientX - tftDownX) + Math.abs(e.clientY - tftDownY) > 6) tftDragged = true;
+  if (camDragging) return;
+  const cell = tftCellFromEvent(e);
+  tftMode.setHover(cell ? tftCellId(cell.col, cell.row) : null);
+});
+
+canvas.addEventListener('pointerup', e => {
+  if (!tftActive || tftDragged) return;
+  if (tftMode.phase !== TFT_PHASE.PLANNING) return;
+  const cell = tftCellFromEvent(e);
+  if (!cell) { tftMode.select(null); return; }
+  const id = tftCellId(cell.col, cell.row);
+  const occupant = tftMode.roster.at(id);
+  if (tftMode.selected) tftMode.place(tftMode.selected, id);
+  else if (occupant) tftMode.select(occupant);
+});
+
 renderer.setAnimationLoop(() => {
   const rawDt = clock.getDelta();
   const dt = Math.min(rawDt, 0.05);
@@ -1591,12 +1717,47 @@ renderer.setAnimationLoop(() => {
     for (const f of Object.values(fighters)) {
       if (f.root.visible) f.update(SIM_STEP);
     }
+    // autochess runs on the same fixed quantum, so its battles resolve
+    // identically regardless of frame rate
+    if (tftActive) tftMode.update(SIM_STEP);
+  }
+
+  if (tftActive) {
+    tftUi?.onTick?.(tftMode.phase, tftMode.timer);
+    tftUi?.updateFloaters(dt, camera, tftMode.board.unitRoot);
   }
 
   if (ctlActive()) {
     ctlStam = Math.min(100, ctlStam + dt * (engine.ctlGuard ? 4 : 10));
     ctlDodgeCd = Math.max(0, ctlDodgeCd - dt);
     updateCtlPad();
+  }
+
+  if (tftActive) {
+    // Autochess uses a fixed high-angle shot framing the whole board, like
+    // TFT — no cinematic sway, because the player is reading hexes and needs
+    // a stable frame. Drag still orbits/tilts; double-click recentres.
+    // 46 degrees of elevation is the shallowest angle that clears the cage's
+    // near fence (2 units tall) while keeping the far row on screen.
+    const aspect = camera.aspect;
+    const dist = aspect < 1.0 ? 19.5 : aspect < 1.5 ? 16.0 : 14.6;
+    const pitch = Math.max(0.55, Math.min(1.25, 0.80 - userY * 0.12));
+    const yaw = userYaw * 0.6;
+    camera.position.set(
+      Math.sin(yaw) * Math.cos(pitch) * dist,
+      tftMode.board.floorY + Math.sin(pitch) * dist,
+      Math.cos(yaw) * Math.cos(pitch) * dist,
+    );
+    if (shake > 0.002) {
+      camera.position.x += (Math.random() - 0.5) * shake;
+      camera.position.y += (Math.random() - 0.5) * shake * 0.7;
+      shake *= Math.exp(-5 * dt);
+    }
+    camera.lookAt(0, tftMode.board.floorY + 0.35, 0);
+    faceFill.position.set(camera.position.x, camera.position.y + 1.2, camera.position.z);
+    faceFill.target.position.set(0, tftMode.board.floorY + 1.0, 0);
+    renderer.render(scene, camera);
+    return;
   }
 
   if (menuOpen) {

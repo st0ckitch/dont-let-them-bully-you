@@ -27,13 +27,17 @@ const GUARD_DELTAS = [
 const GUARD_SAFE = new Set(['idle', 'walk', 'run']);
 
 export class Fighter3D {
-  constructor(cfg, scene, { model, clips, pos, corner, bindDelta = null }) {
+  // `parent` and `arenaRadius` exist for the autochess mode, which parents its
+  // units to a board group and plays on a hex grid far wider than the octagon.
+  // Both default to the octagon behaviour, so auto-sim and control are untouched.
+  constructor(cfg, scene, { model, clips, pos, corner, bindDelta = null, parent = null, arenaRadius = 2.6 }) {
     this.cfg = cfg;
     this.stats = cfg.stats;
     this.hp = 100;
     this.corner = corner;
     this.startPos = pos.clone();
     this.state = 'idle';
+    this.arenaRadius = arenaRadius;
 
     this.root = new THREE.Group();
     // YXZ so the KO pitch (rotation.x) happens about the yawed local axis —
@@ -43,7 +47,7 @@ export class Fighter3D {
     this.root.add(model.scene);
     this.materials = model.materials;
     this.bones = model.bones;
-    scene.add(this.root);
+    (parent || scene).add(this.root);
 
     this.mixer = new THREE.AnimationMixer(model.scene);
     this.actions = {};
@@ -302,11 +306,15 @@ export class Fighter3D {
       this.vel.multiplyScalar(0.9277434863285529);
     }
 
-    // keep inside the octagon canvas (sqrt not hypot — same determinism rule)
-    const r = Math.sqrt(this.pos.x * this.pos.x + this.pos.z * this.pos.z);
-    if (r > 2.6) {
-      this.pos.x *= 2.6 / r;
-      this.pos.z *= 2.6 / r;
+    // keep inside the octagon canvas (sqrt not hypot — same determinism rule).
+    // The autochess board passes Infinity: its hex grid is the containment.
+    const cage = this.arenaRadius;
+    if (Number.isFinite(cage)) {
+      const r = Math.sqrt(this.pos.x * this.pos.x + this.pos.z * this.pos.z);
+      if (r > cage) {
+        this.pos.x *= cage / r;
+        this.pos.z *= cage / r;
+      }
     }
     this.pos.y = 0;
 

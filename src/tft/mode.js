@@ -1,0 +1,543 @@
+// Autochess mode: round flow, opponent generation, and the bridge between the
+// pure combat sim and the 3D board.
+//
+// Phase loop mirrors TFT: PLANNING (buy, position, level) -> COMBAT (hands off,
+// the sim resolves) -> RESOLVE (damage, gold, streak) -> next round.
+
+import * as THREE from 'three';
+import * as Hex from './hex.js';
+import { Board3D } from './board3d.js';
+import { UnitView } from './unitview.js';
+import { UNIT_BY_ID, UNITS, sellValue, statsFor, abilityText } from './units.js';
+import { Combat, CombatUnit, setCombatRng, ROUND_TIME, playerDamage } from './combat.js';
+import {
+  Pool, Roster, Economy, setShopRng,
+  SHOP_SIZE, REROLL_COST, XP_COST, XP_PER_ROUND, BENCH_SLOTS, boardCapacity,
+} from './shop.js';
+
+export const PHASE = { PLANNING: 'planning', COMBAT: 'combat', RESOLVE: 'resolve', OVER: 'over' };
+
+const PLANNING_TIME = 30;   // seconds to shop and position
+const RESOLVE_TIME = 3.2;   // beat between the last death and the next planning phase
+const STAGE1_ROUNDS = 3;
+const STAGE_ROUNDS = 5;
+
+// Where a side's units stand, in preference order. Melee take the front rows,
+// reach units fall to the back — the same shape a player would build.
+const FRONT_SLOTS = [
+  { col: 3, row: 6 }, { col: 2, row: 6 }, { col: 4, row: 6 },
+  { col: 1, row: 6 }, { col: 5, row: 6 }, { col: 0, row: 6 }, { col: 6, row: 6 },
+];
+const BACK_SLOTS = [
+  { col: 3, row: 7 }, { col: 2, row: 7 }, { col: 4, row: 7 },
+  { col: 1, row: 7 }, { col: 5, row: 7 }, { col: 0, row: 7 }, { col: 6, row: 7 },
+];
+
+const mirrorCell = c => ({ col: Hex.COLS - 1 - c.col, row: Hex.ROWS - 1 - c.row });
+
+export class AutochessMode {
+  // `assets` is the loadAssets() result plus a per-rig lookup.
+  constructor({ scene, camera, assets, fx, ui }) {
+    this.scene = scene;
+    this.camera = camera;
+    this.assets = assets;
+    this.fx = fx;
+    this.ui = ui;
+
+    this.board = new Board3D(scene);
+    this.active = false;
+    this.phase = PHASE.PLANNING;
+    this.views = new Map();   // entry.uid -> UnitView
+    this.enemyViews = [];
+    this.combat = null;
+    this.highlights = new Map();
+    // Freezes the phase clock and the battle sim without tearing anything
+    // down — used by the pause control and by scripted testing, where rounds
+    // would otherwise advance between one inspection and the next.
+    this.paused = false;
+    this._tmp = new THREE.Vector3();
+  }
+
+  async load(onProgress) {
+    await this.board.load(onProgress);
+  }
+
+  // ---- lifecycle ----
+  start() {
+    setCombatRng(null);
+    setShopRng(null);
+    this.pool = new Pool();
+    this.roster = new Roster(this.pool);
+    this.econ = new Economy();
+    this.econ.level = 2;      // TFT hands you a unit and a level before 1-1
+    this.econ.gold = 3;
+    this.stage = 1;
+    this.round = 1;
+    this.roundIndex = 1;
+    this.selected = null;
+    this.frozen = false;
+    this.active = true;
+    this.board.setVisible(true);
+    this.clearAll();
+    this.shop = this.pool.roll(this.econ.level, SHOP_SIZE);
+    this.beginPlanning();
+  }
+
+  stop() {
+    this.active = false;
+    this.board.setVisible(false);
+    this.clearAll();
+  }
+
+  clearAll() {
+    for (const v of this.views.values()) v.dispose();
+    this.views.clear();
+    for (const v of this.enemyViews) v.dispose();
+    this.enemyViews = [];
+    this.combat = null;
+  }
+
+  // ---- phases ----
+  beginPlanning() {
+    this.phase = PHASE.PLANNING;
+    this.timer = PLANNING_TIME;
+    this.combat = null;
+    for (const v of this.enemyViews) v.dispose();
+    this.enemyViews = [];
+    this._enemyPreview = null; // fresh opponent each round
+    this._enemyPreviewFor = -1;
+
+    this.econ.grantXp(XP_PER_ROUND);
+    this.syncViews();
+    this.board.setGridMode(true);
+    for (const e of this.roster.board) {
+      const v = this.views.get(e.uid);
+      if (!v) continue;
+      v.showPlanningPlate();
+      v.playSignature();
+      v.faceToward(0, -6, 0, true); // square up toward the enemy half
+    }
+    this.refreshHighlights();
+    this.ui?.onState(this.snapshot());
+  }
+
+  beginCombat() {
+    if (this.phase !== PHASE.PLANNING) return;
+    const placed = this.roster.board;
+    if (!placed.length) {
+      this.ui?.onToast('Place at least one fighter on the board');
+      this.timer = Math.max(this.timer, 4);
+      return;
+    }
+    this.phase = PHASE.COMBAT;
+    this.timer = ROUND_TIME;
+
+    const enemySpecs = this.previewEnemy();
+    const playerUnits = placed.map(e => {
+      const u = new CombatUnit(UNIT_BY_ID[e.unitId], e.star, 'player', Hex.idCol(e.cell), Hex.idRow(e.cell));
+      u.entryUid = e.uid;
+      return u;
+    });
+    const enemyUnits = enemySpecs.map(s =>
+      new CombatUnit(UNIT_BY_ID[s.id], s.star, 'enemy', s.col, s.row));
+
+    // spawn enemy visuals
+    for (const cu of enemyUnits) {
+      const v = this.makeView(cu.unit, cu.star, 'enemy');
+      v.setPosition(cu.x, cu.z);
+      v.faceToward(0, 6, 0, true);
+      cu.view = v;
+      this.enemyViews.push(v);
+    }
+    for (const cu of playerUnits) {
+      cu.view = this.views.get(cu.entryUid) || null;
+    }
+
+    this.combat = new Combat([...playerUnits, ...enemyUnits], this.combatHooks());
+    for (const cu of [...playerUnits, ...enemyUnits]) {
+      cu.view?.setBarsVisible(true);
+      cu.view?.playIdle();
+    }
+    this.board.setGridMode(false);
+    this.fx?.startMusic?.();
+    this.ui?.onState(this.snapshot());
+  }
+
+  endCombat(winner) {
+    if (this.phase !== PHASE.COMBAT) return;
+    this.phase = PHASE.RESOLVE;
+    this.timer = RESOLVE_TIME;
+    const won = winner === 'player';
+    this.econ.recordResult(won);
+
+    let dmg = 0;
+    if (!won) {
+      const survivors = this.combat ? this.combat.living('enemy') : [];
+      dmg = playerDamage(this.stage, survivors);
+      this.econ.hp = Math.max(0, this.econ.hp - dmg);
+    }
+    const pay = this.econ.payout();
+    this.lastResult = { won, dmg, pay, draw: winner === null };
+    this.ui?.onRoundEnd(this.lastResult);
+    this.fx?.bell?.();
+    if (this.econ.hp <= 0) {
+      this.phase = PHASE.OVER;
+      this.ui?.onGameOver(this.snapshot());
+    }
+    this.ui?.onState(this.snapshot());
+  }
+
+  nextRound() {
+    this.roundIndex++;
+    this.round++;
+    const perStage = this.stage === 1 ? STAGE1_ROUNDS : STAGE_ROUNDS;
+    if (this.round > perStage) { this.stage++; this.round = 1; }
+    // A frozen shop survives the round transition, empty slots included — that
+    // is the point: you hold a pair you cannot afford yet through to next round.
+    if (!this.frozen) this.shop = this.pool.roll(this.econ.level, SHOP_SIZE);
+    this.beginPlanning();
+  }
+
+  // The opponent is generated during PLANNING, not at the bell, so it can be
+  // scouted before you commit — with a single AI there is no reason to hide it,
+  // and a board you cannot see is a board you cannot counter. Memoised on the
+  // player's board size (which is what sizes the enemy), so adding a unit
+  // re-rolls the matchup but merely re-rendering does not.
+  previewEnemy() {
+    const size = this.roster.board.length;
+    if (!this._enemyPreview || this._enemyPreviewFor !== size) {
+      this._enemyPreview = this.enemyBoard();
+      this._enemyPreviewFor = size;
+    }
+    return this._enemyPreview;
+  }
+
+  toggleFreeze() {
+    if (this.phase !== PHASE.PLANNING) return false;
+    this.frozen = !this.frozen;
+    this.ui?.onState(this.snapshot());
+    return this.frozen;
+  }
+
+  // ---- opponent ----
+  // A single scaling AI board rather than seven simulated rivals: this mode is
+  // about testing the loop, and one opponent that ramps on a readable curve is
+  // far easier to balance against than an emergent lobby.
+  enemyBoard() {
+    const r = this.roundIndex;
+    // Size the opponent off the PLAYER'S board, not off a fixed curve. In TFT
+    // your opponents are other players climbing the same level ladder, so a
+    // board that ramps on round number alone runs away from anyone who banks
+    // gold instead of levelling — an 8-unit enemy against a level-5 player's
+    // 5 units is unwinnable regardless of how well the round was played.
+    // Pressure comes from star levels and cost tiers instead.
+    const playerBoard = Math.max(1, this.roster.board.length);
+    const count = Math.max(1, Math.min(9, playerBoard + (r >= 8 ? 1 : 0)));
+    const maxCost = Math.max(1, Math.min(5, 1 + Math.floor((r - 1) / 3)));
+    const twoStarChance = Math.max(0, Math.min(0.7, (r - 5) * 0.085));
+    const threeStarChance = Math.max(0, Math.min(0.2, (r - 13) * 0.035));
+
+    const front = [...FRONT_SLOTS], back = [...BACK_SLOTS];
+    const picks = [];
+    for (let i = 0; i < count; i++) {
+      const tierPool = UNITS.filter(u => u.cost <= maxCost);
+      const u = tierPool[Math.floor(Math.random() * tierPool.length)];
+      const roll = Math.random();
+      const star = roll < threeStarChance ? 3 : roll < twoStarChance ? 2 : 1;
+      const pool = u.range > 1 ? (back.length ? back : front) : (front.length ? front : back);
+      const slot = pool.shift();
+      if (!slot) break;
+      const c = mirrorCell(slot);
+      picks.push({ id: u.id, star, col: c.col, row: c.row });
+    }
+    return picks;
+  }
+
+  // ---- combat <-> visuals ----
+  combatHooks() {
+    return {
+      castDuration: u => u.view?.castDuration() ?? 1.1,
+
+      onMove: u => u.view?.playWalk(),
+      onArrive: u => { if (u.state === 'idle') u.view?.playIdle(); },
+
+      onAttackStart: (u, tgt, clip, dur) => {
+        if (!u.view) return;
+        if (tgt) u.view.faceToward(tgt.x, tgt.z, 0, true);
+        u.view.playAttack(clip, dur);
+      },
+
+      onCastStart: (u, tgt, ability, dur) => {
+        if (!u.view) return;
+        if (tgt) u.view.faceToward(tgt.x, tgt.z, 0, true);
+        u.view.playCast(ability.clip, dur);
+        this.ui?.onCast(u);
+      },
+
+      onDamage: (src, tgt, dealt, type, crit) => {
+        tgt.view?.flash();
+        tgt.view?.hit(src.x, src.z, crit ? 0.5 : 0.28);
+        this.fx?.impact?.(type === 'magic' ? 'kick' : 'punch', dealt > tgt.maxHp * 0.12, crit);
+        this.ui?.onFloatDamage?.(tgt, Math.round(dealt), crit, type);
+      },
+
+      onHeal: (u, amount) => this.ui?.onFloatHeal?.(u, Math.round(amount)),
+
+      onDeath: unit => unit.view?.die(),
+
+      onEnd: winner => this.endCombat(winner),
+    };
+  }
+
+  makeView(unit, star, team, entry = null) {
+    const rig = unit.rig;
+    const assets = {
+      model: this.assets.models[unit.modelIndex],
+      clips: this.assets.clipSets[rig],
+      bindDelta: this.assets.overlayDeltas[rig],
+    };
+    return new UnitView(entry, unit, star, team, assets, this.board.unitRoot, this.scene);
+  }
+
+  // Bring UnitViews in line with the roster: create views for newly bought
+  // units, drop views for sold ones, and park each one on its hex.
+  syncViews() {
+    const seen = new Set();
+    for (const e of this.roster.entries) {
+      seen.add(e.uid);
+      let v = this.views.get(e.uid);
+      if (v && v.star !== e.star) { v.dispose(); this.views.delete(e.uid); v = null; }
+      if (!v) {
+        v = this.makeView(UNIT_BY_ID[e.unitId], e.star, 'player', e);
+        this.views.set(e.uid, v);
+      }
+      // A unit that died last round keeps its roster entry, so its view comes
+      // back still faded out and sunk under the floor. Revive before
+      // positioning — reset() snaps the fighter to its start position.
+      v.revive();
+      if (e.cell === null) {
+        v.setVisible(false);
+      } else {
+        v.setVisible(true);
+        const w = Hex.cellToWorld(Hex.idCol(e.cell), Hex.idRow(e.cell));
+        v.setPosition(w.x, w.z);
+        v.faceToward(w.x, w.z - 6, 0, true);
+      }
+      // Board units carry their plate in both phases (star pips are the only
+      // on-board read of star level); benched ones are hidden entirely.
+      if (e.cell !== null && this.phase !== PHASE.COMBAT) v.showPlanningPlate();
+    }
+    for (const [uid, v] of [...this.views]) {
+      if (!seen.has(uid)) { v.dispose(); this.views.delete(uid); }
+    }
+  }
+
+  // ---- player actions ----
+  buy(index) {
+    if (this.phase !== PHASE.PLANNING) return false;
+    const id = this.shop[index];
+    if (!id) return false;
+    const unit = UNIT_BY_ID[id];
+    if (!this.econ.canAfford(unit.cost)) { this.ui?.onToast('Not enough gold'); return false; }
+    // a purchase that completes a merge is allowed even with a full bench,
+    // because it does not actually consume a new slot
+    const completesMerge = this.roster.entries.filter(e => e.unitId === id && e.star === 1).length >= 2;
+    if (this.roster.benchFull() && !completesMerge) { this.ui?.onToast('Bench is full'); return false; }
+    if (!this.pool.take(id)) { this.ui?.onToast('None left in the pool'); return false; }
+    this.econ.spend(unit.cost);
+    this.shop[index] = null;
+    const { merged } = this.roster.add(id);
+    this.syncViews();
+    if (merged.length) this.ui?.onMerge(merged[merged.length - 1]);
+    this.ui?.onState(this.snapshot());
+    return true;
+  }
+
+  reroll() {
+    if (this.phase !== PHASE.PLANNING) return false;
+    if (!this.econ.spend(REROLL_COST)) { this.ui?.onToast('Not enough gold'); return false; }
+    this.frozen = false; // paying to reroll obviously means you want new cards
+    this.shop = this.pool.roll(this.econ.level, SHOP_SIZE);
+    this.ui?.onState(this.snapshot());
+    return true;
+  }
+
+  buyXp() {
+    if (this.phase !== PHASE.PLANNING) return false;
+    if (!this.econ.buyXp()) { this.ui?.onToast('Not enough gold'); return false; }
+    this.ui?.onState(this.snapshot());
+    return true;
+  }
+
+  sell(entry) {
+    if (this.phase !== PHASE.PLANNING || !entry) return false;
+    this.econ.gold += sellValue(UNIT_BY_ID[entry.unitId].cost, entry.star);
+    this.roster.remove(entry);
+    if (this.selected === entry) this.selected = null;
+    this.syncViews();
+    this.refreshHighlights();
+    this.ui?.onState(this.snapshot());
+    return true;
+  }
+
+  // Move a roster entry onto a hex (or back to the bench with cell === null).
+  place(entry, cell) {
+    if (this.phase !== PHASE.PLANNING || !entry) return false;
+    if (cell !== null) {
+      const row = Hex.idRow(cell);
+      if (!Hex.isPlayerHalf(row)) { this.ui?.onToast('You can only place on your half'); return false; }
+      const occupant = this.roster.at(cell);
+      if (occupant && occupant !== entry) {
+        // swap rather than reject — repositioning is constant in TFT
+        occupant.cell = entry.cell;
+        entry.cell = cell;
+      } else {
+        if (entry.cell === null && this.roster.board.length >= boardCapacity(this.econ.level)) {
+          this.ui?.onToast(`Level ${this.econ.level} allows ${boardCapacity(this.econ.level)} on the board`);
+          return false;
+        }
+        entry.cell = cell;
+      }
+    } else {
+      if (this.roster.bench.length >= BENCH_SLOTS && entry.cell !== null) {
+        this.ui?.onToast('Bench is full');
+        return false;
+      }
+      entry.cell = null;
+    }
+    this.syncViews();
+    this.refreshHighlights();
+    this.ui?.onState(this.snapshot());
+    return true;
+  }
+
+  select(entry) {
+    this.selected = this.selected === entry ? null : entry;
+    this.refreshHighlights();
+    this.ui?.onState(this.snapshot());
+  }
+
+  setHover(cell) {
+    if (this._hover === cell) return;
+    this._hover = cell;
+    this.refreshHighlights();
+  }
+
+  refreshHighlights() {
+    const h = new Map();
+    if (this.phase === PHASE.PLANNING) {
+      if (this.selected) {
+        for (const { col, row } of Hex.allCells()) {
+          if (!Hex.isPlayerHalf(row)) continue;
+          const id = Hex.cellId(col, row);
+          h.set(id, this.roster.at(id) ? 'occupied' : 'valid');
+        }
+      }
+      if (this._hover != null && Hex.isPlayerHalf(Hex.idRow(this._hover))) h.set(this._hover, 'hover');
+    }
+    this.highlights = h;
+    this.board.setHighlights(h);
+  }
+
+  // ---- frame ----
+  update(dt) {
+    if (!this.active || this.paused) return;
+
+    if (this.phase === PHASE.PLANNING) {
+      this.timer -= dt;
+      if (this.timer <= 0) this.beginCombat();
+    } else if (this.phase === PHASE.COMBAT) {
+      this.timer -= dt;
+      this.combat?.update(dt);
+      if (this.combat) {
+        for (const cu of this.combat.units) {
+          if (!cu.view) continue;
+          cu.view.setPosition(cu.x, cu.z);
+          cu.view.setBars(cu.hp / cu.maxHp, cu.maxMana ? cu.mana / cu.maxMana : 0);
+          if (cu.alive && cu.target) cu.view.faceToward(cu.target.x, cu.target.z, dt);
+        }
+      }
+    } else if (this.phase === PHASE.RESOLVE) {
+      this.timer -= dt;
+      if (this.timer <= 0) this.nextRound();
+    }
+
+    for (const v of this.views.values()) v.update(dt, this.camera);
+    for (const v of this.enemyViews) v.update(dt, this.camera);
+  }
+
+  snapshot() {
+    return {
+      phase: this.phase,
+      timer: Math.max(0, this.timer || 0),
+      stage: this.stage,
+      round: this.round,
+      label: `${this.stage}-${this.round}`,
+      gold: this.econ.gold,
+      hp: this.econ.hp,
+      level: this.econ.level,
+      xp: this.econ.xp,
+      xpNext: this.econ.xpToNext(),
+      streak: this.econ.streak,
+      capacity: boardCapacity(this.econ.level),
+      onBoard: this.roster.board.length,
+      frozen: !!this.frozen,
+      shop: this.shop.map(id => id ? {
+        id,
+        unit: UNIT_BY_ID[id],
+        progress: this.roster.copiesToward(id),
+        affordable: this.econ.gold >= UNIT_BY_ID[id].cost,
+      } : null),
+      bench: this.roster.bench.map(e => ({ entry: e, unit: UNIT_BY_ID[e.unitId], star: e.star })),
+      board: this.roster.board.map(e => ({ entry: e, unit: UNIT_BY_ID[e.unitId], star: e.star, cell: e.cell })),
+      selected: this.selected,
+      detail: this.detailFor(this.selected),
+      enemy: this.enemyRoster(),
+    };
+  }
+
+  // The opponent's board for the scout panel. During combat this reads live HP
+  // straight off the sim; during planning it is the previewed line-up at full
+  // health.
+  enemyRoster() {
+    if (this.combat) {
+      return this.combat.units
+        .filter(u => u.team === 'enemy')
+        .map(u => ({
+          unit: u.unit, star: u.star,
+          hp: Math.max(0, Math.round(u.hp)), maxHp: u.maxHp,
+          frac: Math.max(0, u.hp / u.maxHp),
+          mana: u.maxMana ? Math.min(1, u.mana / u.maxMana) : 0,
+          alive: u.alive,
+        }));
+    }
+    if (this.phase !== PHASE.PLANNING) return [];
+    return this.previewEnemy().map(s => {
+      const unit = UNIT_BY_ID[s.id];
+      const st = statsFor(unit, s.star);
+      return {
+        unit, star: s.star, hp: st.maxHp, maxHp: st.maxHp,
+        frac: 1, mana: 0, alive: true,
+      };
+    });
+  }
+
+  // Everything the inspector panel needs about one unit. `entry` is null when
+  // inspecting a shop card (nothing owned yet, so nothing to sell).
+  detailFor(entry, unitId = null, star = 1) {
+    const id = entry ? entry.unitId : unitId;
+    if (!id) return null;
+    const unit = UNIT_BY_ID[id];
+    const s = entry ? entry.star : star;
+    return {
+      entry,
+      unit,
+      star: s,
+      stats: statsFor(unit, s),
+      ability: unit.ability,
+      abilityText: abilityText(unit, s),
+      sellFor: entry ? sellValue(unit.cost, s) : null,
+      onBoard: entry ? entry.cell !== null : false,
+    };
+  }
+}
