@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;600;800;900&display=swap" />
   <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=satoshi@400,600,700,800&display=swap" />
   <link rel="stylesheet" href="./src/style.css" />
+  <link rel="stylesheet" href="./src/tft/tft.css" />
   <script type="importmap">
     { "imports": { "three": "./vendor/three.module.js" } }
   </script>
@@ -206,11 +207,13 @@
         <div id="modeSeg" role="group" aria-label="Fight mode">
           <button class="modeBtn sel" data-mode="auto">Auto-sim</button>
           <button class="modeBtn" data-mode="control">Take control</button>
+          <button class="modeBtn" data-mode="autochess">Autochess</button>
         </div>
         <button id="menuFightBtn">FIGHT</button>
         <div id="menuHint">3 rounds × 30 seconds — win by KO, flash KO, or the judges' scorecards</div>
       </div>
     </div>
+    <div id="tftUi" class="hidden"></div>
     <div id="loading">
       <div id="loadTitle"><em>FLICK</em> <span>·</span> <em>MMA</em></div>
       <div id="loadBar"><div id="loadFill"></div></div>

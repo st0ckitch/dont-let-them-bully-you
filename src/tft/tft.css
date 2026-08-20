@@ -1,0 +1,514 @@
+/* Autochess HUD.
+   Kept in its own sheet and scoped under #tftUi so nothing here can reach the
+   auto-sim / control-mode broadcast chrome in style.css. */
+
+#tftUi {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  pointer-events: none;
+  font-family: 'Barlow Condensed', 'Geist', system-ui, sans-serif;
+  color: #e8eef7;
+  --panel: rgba(10, 17, 28, 0.86);
+  --edge: rgba(140, 170, 210, 0.22);
+  --gold: #f0c674;
+}
+
+#tftUi.hidden { display: none; }
+#tftUi button { pointer-events: auto; font-family: inherit; cursor: pointer; }
+
+/* The octagon-mode broadcast chrome is laid out by ID selectors in style.css,
+   which outrank a `.hidden` class — so autochess suppresses it from the body
+   class instead of fighting specificity element by element. */
+body.tftMode #topbar,
+body.tftMode #commentaryWrap,
+body.tftMode #broadcast,
+body.tftMode #roundCard,
+body.tftMode #ctlPad,
+body.tftMode #banner,
+body.tftMode #feed,
+body.tftMode #gameMicBtn {
+  display: none !important;
+}
+
+/* ---------- top bar ---------- */
+.acTop {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: 10px;
+  padding: 7px 22px 9px;
+  backdrop-filter: blur(6px);
+  min-width: 190px;
+}
+
+.acStage {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  line-height: 1;
+  color: var(--gold);
+}
+
+.acPhase {
+  font-size: 11px;
+  letter-spacing: 3px;
+  opacity: 0.75;
+}
+.acPhase[data-phase='combat'] { color: #ff8a6b; opacity: 1; }
+.acPhase[data-phase='planning'] { color: #6fd3ff; opacity: 1; }
+
+.acTimerBar {
+  width: 100%;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.acTimerFill {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, #6fd3ff, #b98cff);
+  transition: width 0.12s linear;
+}
+[data-phase='combat'] .acTimerFill { background: linear-gradient(90deg, #ff6b4a, #ffb03a); }
+
+/* ---------- left rail ---------- */
+.acRail {
+  position: absolute;
+  left: 14px;
+  top: 84px;
+  width: 208px;
+  max-height: calc(100vh - 250px);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow: visible;
+}
+
+.acRail > div {
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: 9px;
+  padding: 8px 10px;
+  backdrop-filter: blur(6px);
+}
+
+.acHp { display: flex; align-items: baseline; gap: 6px; }
+.acHpVal { font-size: 30px; font-weight: 700; line-height: 1; color: #7ef0a8; }
+.acHp[data-low='1'] .acHpVal { color: #ff6b6b; }
+.acHpLbl { font-size: 11px; letter-spacing: 2px; opacity: 0.6; }
+
+.acLvlTop { display: flex; justify-content: space-between; align-items: baseline; }
+.acLvlTop b { font-size: 17px; }
+.acLvlTop span { font-size: 12px; opacity: 0.65; }
+.acXpBar {
+  height: 4px;
+  margin: 5px 0 3px;
+  background: rgba(255, 255, 255, 0.13);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.acXpBar i { display: block; height: 100%; background: linear-gradient(90deg, #6fd3ff, #4a8fff); }
+.acXpTxt { font-size: 10px; letter-spacing: 1px; opacity: 0.55; }
+
+/* board capacity — deliberately loud; "why can't I place this?" is the most
+   common confusion, and the answer is always this number */
+.acCap { border-color: rgba(140, 170, 210, 0.28) !important; }
+.acCap[data-full='1'] { border-color: rgba(240, 198, 116, 0.65) !important; }
+.acCapTop { display: flex; align-items: baseline; gap: 4px; }
+.acCapTop b { font-size: 26px; line-height: 1; }
+.acCapTop i { font-style: normal; font-size: 15px; opacity: 0.6; }
+.acCap[data-full='1'] .acCapTop b { color: var(--gold); }
+.acCapLbl { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; opacity: 0.5; margin-top: 1px; }
+.acCapPips { display: flex; gap: 3px; margin: 6px 0 4px; flex-wrap: wrap; }
+.acCapPips span {
+  width: 9px; height: 9px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+.acCapPips span.on { background: #6fd3ff; box-shadow: 0 0 6px -1px #6fd3ff; }
+.acCap[data-full='1'] .acCapPips span.on { background: var(--gold); box-shadow: 0 0 6px -1px var(--gold); }
+.acCapHint { font-size: 9px; line-height: 1.25; opacity: 0.45; }
+.acCap[data-full='1'] .acCapHint { opacity: 0.75; color: var(--gold); }
+
+.acStreak { font-size: 12px; text-align: center; }
+.acStreakNone { opacity: 0.4; }
+.acWin { color: #7ef0a8; }
+.acLose { color: #ff9d6b; }
+
+/* ---------- inspector ---------- */
+/* higher specificity than `.acRail > div` so the tier-coloured left edge and
+   the roomier padding survive the shared rail styling */
+.acRail > .acDetail {
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-left: 3px solid var(--tier, #666);
+  border-radius: 9px;
+  padding: 9px 11px 10px;
+  backdrop-filter: blur(6px);
+  pointer-events: auto;
+}
+.acDetail.hidden { display: none; }
+
+.acDetHead { display: flex; gap: 9px; align-items: center; }
+.acDetArt {
+  width: 46px; height: 46px;
+  border-radius: 7px;
+  overflow: hidden;
+  border: 1px solid var(--tier, #666);
+  flex: none;
+  background: rgba(0, 0, 0, 0.4);
+}
+.acDetArt img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.acDetArt span { display: grid; place-items: center; height: 100%; font-size: 20px; }
+
+.acDetWho { min-width: 0; }
+.acDetName { font-size: 17px; font-weight: 700; letter-spacing: 1px; display: flex; align-items: center; gap: 5px; }
+.acDetStars { font-style: normal; font-size: 12px; }
+.acDetStars.s1 { color: #a2703a; }
+.acDetStars.s2 { color: #c3cdd2; }
+.acDetStars.s3 { color: #ffd24a; }
+.acDetNick { font-size: 10px; opacity: 0.55; text-transform: uppercase; letter-spacing: 1px; }
+.acDetTags { display: flex; gap: 5px; margin-top: 3px; }
+.acDetTags span {
+  font-size: 9px; letter-spacing: 1px; text-transform: uppercase;
+  padding: 1px 5px; border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+.acDetCost { color: var(--gold); border-color: rgba(240, 198, 116, 0.45) !important; }
+.acDetRole { color: var(--tier, #ccc); border-color: var(--tier, #666) !important; }
+
+.acDetBlurb {
+  margin: 7px 0 6px;
+  font-size: 11px;
+  line-height: 1.35;
+  opacity: 0.72;
+}
+
+.acDetStats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px 8px;
+  padding: 6px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.acDetStats > div { display: flex; justify-content: space-between; align-items: baseline; gap: 4px; }
+.acDetStats span { font-size: 9px; opacity: 0.5; letter-spacing: 0.4px; }
+.acDetStats b { font-size: 12px; }
+
+.acDetAbil { margin-top: 7px; }
+.acDetAbilName {
+  font-size: 12px; font-weight: 700; letter-spacing: 0.6px;
+  color: #b98cff;
+  display: flex; justify-content: space-between; align-items: baseline; gap: 6px;
+}
+.acDetAbilName em { font-style: normal; font-size: 9px; color: #6fd3ff; opacity: 0.85; white-space: nowrap; }
+.acDetAbil p { margin: 3px 0 0; font-size: 11px; line-height: 1.35; opacity: 0.8; }
+
+.acSell {
+  margin-top: 9px;
+  width: 100%;
+  background: linear-gradient(180deg, #6d2230, #481621);
+  border: 1px solid #a8324a;
+  border-radius: 7px;
+  color: #ffd9df;
+  font-size: 12px;
+  letter-spacing: 1px;
+  padding: 7px 9px;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  position: relative;
+}
+.acSell b { color: var(--gold); }
+.acSell em {
+  position: absolute; right: 7px;
+  font-style: normal; font-size: 9px; opacity: 0.5;
+  border: 1px solid currentColor; border-radius: 3px; padding: 0 3px;
+}
+.acSell:hover { filter: brightness(1.2); }
+
+.acDetHint {
+  margin-top: 8px;
+  font-size: 10px; letter-spacing: 1px; text-align: center;
+  opacity: 0.45; text-transform: uppercase;
+}
+
+/* ---------- bench ---------- */
+/* One grid for the whole bottom cluster. The bench shares the shop's second
+   column so it always sits directly above the cards, and rows can never
+   overlap however tall either half grows. */
+.acBottom {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 14px;
+  display: grid;
+  grid-template-columns: 104px auto;
+  grid-template-rows: auto auto;
+  column-gap: 10px;
+  row-gap: 10px;
+  align-items: end;
+}
+
+.acBench {
+  grid-column: 2;
+  grid-row: 1;
+  display: flex;
+  gap: 6px;
+  pointer-events: auto;
+}
+
+.acBenchSlot {
+  width: 58px;
+  height: 58px;
+  border-radius: 8px;
+  background: rgba(10, 17, 28, 0.6);
+  border: 1px solid rgba(140, 170, 210, 0.18);
+  position: relative;
+  overflow: hidden;
+}
+.acBenchSlot.acFilled {
+  cursor: pointer;
+  border-color: var(--tier);
+  box-shadow: inset 0 0 14px -4px var(--tier);
+}
+.acBenchSlot.acSel { outline: 2px solid var(--gold); outline-offset: 1px; }
+.acBenchSlot img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.acBenchSlot > span { display: grid; place-items: center; height: 100%; font-size: 22px; }
+/* star pips read bronze/silver/gold by STAR level, matching the 3D plate;
+   cost tier is carried by the slot border instead */
+.acStars {
+  position: absolute;
+  left: 0; right: 0; bottom: 1px;
+  text-align: center;
+  font-size: 11px;
+  font-style: normal;
+  text-shadow: 0 1px 3px #000;
+}
+.acStars.s1 { color: #a2703a; }
+.acStars.s2 { color: #c3cdd2; }
+.acStars.s3 { color: #ffd24a; }
+
+/* ---------- shop ---------- */
+.acShopSide {
+  grid-column: 1;
+  grid-row: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 104px;
+}
+
+.acGold {
+  background: var(--panel);
+  border: 1px solid rgba(240, 198, 116, 0.4);
+  border-radius: 8px;
+  padding: 5px 9px;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.acGold b { font-size: 22px; color: var(--gold); line-height: 1; }
+.acGold span { font-size: 10px; letter-spacing: 1.5px; opacity: 0.6; }
+
+.acSideBtn {
+  flex: 1;
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: 8px;
+  color: #e8eef7;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+  padding: 6px 8px;
+  transition: border-color 0.12s, background 0.12s;
+}
+.acSideBtn b { font-size: 13px; letter-spacing: 0.5px; }
+.acSideBtn span { font-size: 10px; opacity: 0.6; }
+.acSideBtn:hover:not(:disabled) { border-color: var(--gold); background: rgba(20, 32, 50, 0.9); }
+.acSideBtn:disabled { opacity: 0.38; cursor: not-allowed; }
+
+.acCardsWrap { grid-column: 2; grid-row: 2; display: flex; flex-direction: column; gap: 5px; }
+.acCards { display: flex; gap: 7px; pointer-events: auto; }
+
+/* ---------- freeze ---------- */
+.acFreeze {
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: 7px;
+  color: #e8eef7;
+  padding: 4px 10px;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 7px;
+  transition: border-color 0.12s, background 0.12s, color 0.12s;
+}
+.acFreeze b { font-size: 11px; letter-spacing: 1.2px; }
+.acFreeze span { font-size: 9px; opacity: 0.5; letter-spacing: 0.5px; }
+.acFreeze:hover:not(:disabled) { border-color: #6fd3ff; }
+.acFreeze:disabled { opacity: 0.35; cursor: not-allowed; }
+.acFreeze.on {
+  background: linear-gradient(180deg, rgba(43, 120, 190, 0.5), rgba(20, 60, 105, 0.6));
+  border-color: #6fd3ff;
+  color: #cdeeff;
+}
+.acFreeze.on span { opacity: 0.72; }
+
+/* a frozen shop reads as held, not merely styled — the cards get the same
+   cyan edge as the toggle so the two are unmistakably linked */
+.acCards.acFrozen .acCard { box-shadow: 0 0 0 1px #6fd3ff, 0 0 14px -6px #6fd3ff; }
+.acCards.acFrozen .acCardEmpty { box-shadow: 0 0 0 1px rgba(111, 211, 255, 0.35); }
+
+.acCard {
+  width: 128px;
+  background: linear-gradient(180deg, rgba(16, 26, 42, 0.95), rgba(9, 14, 24, 0.97));
+  border: 1px solid var(--tier, #444);
+  border-bottom: 3px solid var(--tier, #444);
+  border-radius: 9px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.12s;
+  display: flex;
+  flex-direction: column;
+}
+.acCard:hover { transform: translateY(-4px); box-shadow: 0 8px 22px -6px var(--tier); }
+.acCard.acPoor { opacity: 0.45; }
+.acCardEmpty {
+  border: 1px dashed rgba(140, 170, 210, 0.16);
+  background: rgba(8, 12, 20, 0.5);
+  cursor: default;
+}
+.acCardEmpty:hover { transform: none; box-shadow: none; }
+
+.acCardArt { position: relative; height: 64px; background: rgba(0, 0, 0, 0.35); }
+.acCardArt img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 22%; display: block; }
+.acCardFlag { display: grid; place-items: center; height: 100%; font-size: 26px; }
+
+.acPips {
+  position: absolute;
+  right: 4px; top: 4px;
+  display: flex;
+  gap: 2px;
+}
+.acPips i {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.22);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5);
+}
+.acPips i.on { background: var(--gold); }
+
+.acCardName { font-size: 14px; font-weight: 700; letter-spacing: 1px; padding: 4px 7px 0; }
+.acCardNick { font-size: 9px; letter-spacing: 1px; opacity: 0.5; padding: 0 7px 3px; text-transform: uppercase; }
+.acCardFoot {
+  margin-top: auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 3px 7px 5px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+.acCardAbil { font-size: 9px; opacity: 0.6; max-width: 84px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.acCardFoot b { font-size: 13px; color: var(--gold); }
+
+/* ---------- ready button ---------- */
+.acReady {
+  position: absolute;
+  right: 18px;
+  bottom: 100px;
+  background: linear-gradient(180deg, #2c6fd6, #1b4b9c);
+  border: 1px solid #6fa6ff;
+  border-radius: 9px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  padding: 12px 20px;
+  box-shadow: 0 6px 20px -8px #2c6fd6;
+}
+.acReady:hover { filter: brightness(1.15); }
+.acReady.hidden { display: none; }
+
+/* ---------- transient ---------- */
+.acToast {
+  position: absolute;
+  left: 50%;
+  bottom: 232px;
+  transform: translateX(-50%);
+  background: rgba(10, 17, 28, 0.94);
+  border: 1px solid var(--edge);
+  border-radius: 7px;
+  padding: 7px 15px;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+}
+.acToast.hidden { display: none; }
+.acToastIn { animation: acPop 0.22s ease-out; }
+
+@keyframes acPop {
+  from { opacity: 0; transform: translateX(-50%) translateY(6px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.acBanner {
+  position: absolute;
+  left: 50%;
+  top: 40%;
+  transform: translateX(-50%);
+  text-align: center;
+  pointer-events: none;
+}
+.acBanner.hidden { display: none; }
+.acBannerMain {
+  font-family: 'Anton', 'Geist', sans-serif;
+  font-size: 46px;
+  letter-spacing: 3px;
+  text-shadow: 0 4px 24px rgba(0, 0, 0, 0.9);
+}
+.acBannerMain.win { color: #7ef0a8; }
+.acBannerMain.lose { color: #ff6b6b; }
+.acBannerSub { font-size: 13px; letter-spacing: 2px; opacity: 0.7; margin-top: 2px; }
+.acBannerIn { animation: acBannerPop 0.4s cubic-bezier(0.2, 1.4, 0.4, 1); }
+
+@keyframes acBannerPop {
+  from { opacity: 0; transform: translateX(-50%) scale(0.85); }
+  to { opacity: 1; transform: translateX(-50%) scale(1); }
+}
+
+/* ---------- floating combat text ---------- */
+.acFloat { position: absolute; inset: 0; overflow: hidden; }
+.acDmg {
+  position: absolute;
+  left: 0; top: 0;
+  font-weight: 700;
+  font-size: 15px;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.95);
+  will-change: transform, opacity;
+  white-space: nowrap;
+}
+.acDmg.phys { color: #ffd9a0; }
+.acDmg.magic { color: #b98cff; }
+.acDmg.crit { color: #ff7b5c; font-size: 21px; }
+.acDmg.heal { color: #7ef0a8; }
+
+/* ---------- narrow screens ---------- */
+@media (max-width: 900px) {
+  .acCard { width: 92px; }
+  .acCardNick, .acCardAbil { display: none; }
+  .acBenchSlot { width: 44px; height: 44px; }
+  .acRail { width: 168px; top: 76px; }
+  .acDetBlurb { display: none; }
+  .acDetStats { grid-template-columns: 1fr; }
+  .acReady { bottom: 92px; right: 10px; padding: 10px 14px; font-size: 12px; }
+}

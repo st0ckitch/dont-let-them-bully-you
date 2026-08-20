@@ -14,6 +14,12 @@ A 3D MMA fight simulator that runs entirely in the browser — no build step, no
 
 Pick two fighters, press FIGHT, and watch. Every fight is decided by stat-driven dice — striking, grappling, cardio, chin, speed — so any fighter can win any night. KO ends it: fall animation, victory celebration, and the winner's own voice line.
 
+## Modes
+
+- **Auto-sim** — pick two fighters and watch the sim call the fight.
+- **Take control** — fight out of the red corner yourself: punch, kick, special, hold block, time your dodges.
+- **Autochess** — a TFT-style autobattler on a hex board in a cage. Buy fighters from a 5-card shop, place them on your half, and they fight for themselves. Three of a kind upgrades to the next star. See [AUTOCHESS.md](AUTOCHESS.md).
+
 ## How it works
 
 - [three.js](https://github.com/mrdoob/three.js) (vendored, r170) renders the scene; models and the octagon were generated with [Meshy AI](https://www.meshy.ai/) and rigged on Meshy biped skeletons.
@@ -25,10 +31,14 @@ Pick two fighters, press FIGHT, and watch. Every fight is decided by stat-driven
 ## Run locally
 
 ```bash
-python3 -m http.server 8000
+python3 tools/serve.py 8000 .
 ```
 
 then open http://localhost:8000
+
+(`python3 -m http.server` works too, but it lets the browser cache ES modules
+heuristically — you edit a file, reload, and the old code still runs. The
+server in `tools/` sends `no-store` to avoid that. See [tools/README.md](tools/README.md).)
 
 ## Credits & disclaimer
 
