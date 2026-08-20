@@ -145,6 +145,71 @@ body.tftMode #gameMicBtn {
 .acWin { color: #7ef0a8; }
 .acLose { color: #ff9d6b; }
 
+/* ---------- opponent scout panel ---------- */
+.acFoe {
+  position: absolute;
+  right: 14px;
+  top: 84px;
+  width: 186px;
+  background: var(--panel);
+  border: 1px solid rgba(200, 70, 70, 0.3);
+  border-right: 3px solid #c0392b;
+  border-radius: 9px;
+  padding: 8px 9px 9px;
+  backdrop-filter: blur(6px);
+}
+.acFoe.hidden { display: none; }
+
+.acFoeHead {
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-size: 10px; letter-spacing: 2px; opacity: 0.7;
+}
+.acFoeHead b { font-size: 14px; color: #ff8a7a; opacity: 1; }
+
+.acFoeTotal {
+  height: 3px; margin: 5px 0 7px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px; overflow: hidden;
+}
+.acFoeTotal i { display: block; height: 100%; background: linear-gradient(90deg, #e5484d, #ff8a6b); transition: width 0.12s linear; }
+
+.acFoeList { display: flex; flex-direction: column; gap: 4px; }
+
+.acFoeRow {
+  display: grid;
+  grid-template-columns: 26px 1fr auto;
+  gap: 6px;
+  align-items: center;
+}
+.acFoeRow.dead { opacity: 0.3; filter: grayscale(1); }
+
+.acFoePic {
+  width: 26px; height: 26px;
+  border-radius: 5px; overflow: hidden;
+  border: 1px solid var(--tier, #666);
+  display: grid; place-items: center; font-size: 13px;
+  background: rgba(0, 0, 0, 0.35);
+}
+.acFoePic img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.acFoeInfo { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.acFoeName { font-size: 10px; letter-spacing: 0.6px; display: flex; gap: 3px; align-items: baseline; }
+.acFoeName em { font-style: normal; font-size: 8px; }
+.acFoeName em.s1 { color: #a2703a; }
+.acFoeName em.s2 { color: #c3cdd2; }
+.acFoeName em.s3 { color: #ffd24a; }
+
+.acFoeBar, .acFoeMana {
+  height: 4px; border-radius: 2px; overflow: hidden;
+  background: #000617;
+}
+.acFoeMana { height: 2px; }
+.acFoeBar i { display: block; height: 100%; background: #c0301f; transition: width 0.12s linear; }
+.acFoeMana i { display: block; height: 100%; background: #127ebd; transition: width 0.12s linear; }
+
+.acFoeHp { font-size: 10px; opacity: 0.6; font-variant-numeric: tabular-nums; }
+.acFoeHint { font-size: 8px; letter-spacing: 0.5px; opacity: 0.4; margin-top: 6px; text-align: center; }
+
 /* ---------- inspector ---------- */
 /* higher specificity than `.acRail > div` so the tier-coloured left edge and
    the roomier padding survive the shared rail styling */
@@ -243,33 +308,32 @@ body.tftMode #gameMicBtn {
 }
 
 /* ---------- bench ---------- */
-/* One grid for the whole bottom cluster. The bench shares the shop's second
-   column so it always sits directly above the cards, and rows can never
-   overlap however tall either half grows. */
+/* The whole bottom cluster: side controls, then a column holding bench above
+   cards above the freeze bar. Spans the full width and centres its contents —
+   anchoring with `left: 50%` instead makes the containing block only half the
+   viewport, which crushed the fixed-width cards into slivers. */
 .acBottom {
   position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0;
+  right: 0;
   bottom: 14px;
-  display: grid;
-  grid-template-columns: 104px auto;
-  grid-template-rows: auto auto;
-  column-gap: 10px;
-  row-gap: 10px;
-  align-items: end;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 10px;
 }
 
 .acBench {
-  grid-column: 2;
-  grid-row: 1;
   display: flex;
   gap: 6px;
   pointer-events: auto;
+  align-self: center;
 }
 
 .acBenchSlot {
   width: 58px;
   height: 58px;
+  flex: 0 0 58px;
   border-radius: 8px;
   background: rgba(10, 17, 28, 0.6);
   border: 1px solid rgba(140, 170, 210, 0.18);
@@ -300,12 +364,11 @@ body.tftMode #gameMicBtn {
 
 /* ---------- shop ---------- */
 .acShopSide {
-  grid-column: 1;
-  grid-row: 2;
   display: flex;
   flex-direction: column;
   gap: 6px;
   width: 104px;
+  flex: 0 0 104px;
 }
 
 .acGold {
@@ -338,7 +401,7 @@ body.tftMode #gameMicBtn {
 .acSideBtn:hover:not(:disabled) { border-color: var(--gold); background: rgba(20, 32, 50, 0.9); }
 .acSideBtn:disabled { opacity: 0.38; cursor: not-allowed; }
 
-.acCardsWrap { grid-column: 2; grid-row: 2; display: flex; flex-direction: column; gap: 5px; }
+.acCardsWrap { display: flex; flex-direction: column; gap: 8px; flex: 0 0 auto; }
 .acCards { display: flex; gap: 7px; pointer-events: auto; }
 
 /* ---------- freeze ---------- */
@@ -372,6 +435,8 @@ body.tftMode #gameMicBtn {
 
 .acCard {
   width: 128px;
+  flex: 0 0 128px; /* never let flex shrink a card into an unreadable sliver */
+  height: 108px;
   background: linear-gradient(180deg, rgba(16, 26, 42, 0.95), rgba(9, 14, 24, 0.97));
   border: 1px solid var(--tier, #444);
   border-bottom: 3px solid var(--tier, #444);

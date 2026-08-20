@@ -104,6 +104,8 @@ export class AutochessMode {
     this.combat = null;
     for (const v of this.enemyViews) v.dispose();
     this.enemyViews = [];
+    this._enemyPreview = null; // fresh opponent each round
+    this._enemyPreviewFor = -1;
 
     this.econ.grantXp(XP_PER_ROUND);
     this.syncViews();
@@ -130,7 +132,7 @@ export class AutochessMode {
     this.phase = PHASE.COMBAT;
     this.timer = ROUND_TIME;
 
-    const enemySpecs = this.enemyBoard();
+    const enemySpecs = this.previewEnemy();
     const playerUnits = placed.map(e => {
       const u = new CombatUnit(UNIT_BY_ID[e.unitId], e.star, 'player', Hex.idCol(e.cell), Hex.idRow(e.cell));
       u.entryUid = e.uid;
@@ -194,6 +196,20 @@ export class AutochessMode {
     // is the point: you hold a pair you cannot afford yet through to next round.
     if (!this.frozen) this.shop = this.pool.roll(this.econ.level, SHOP_SIZE);
     this.beginPlanning();
+  }
+
+  // The opponent is generated during PLANNING, not at the bell, so it can be
+  // scouted before you commit — with a single AI there is no reason to hide it,
+  // and a board you cannot see is a board you cannot counter. Memoised on the
+  // player's board size (which is what sizes the enemy), so adding a unit
+  // re-rolls the matchup but merely re-rendering does not.
+  previewEnemy() {
+    const size = this.roster.board.length;
+    if (!this._enemyPreview || this._enemyPreviewFor !== size) {
+      this._enemyPreview = this.enemyBoard();
+      this._enemyPreviewFor = size;
+    }
+    return this._enemyPreview;
   }
 
   toggleFreeze() {
@@ -476,7 +492,34 @@ export class AutochessMode {
       board: this.roster.board.map(e => ({ entry: e, unit: UNIT_BY_ID[e.unitId], star: e.star, cell: e.cell })),
       selected: this.selected,
       detail: this.detailFor(this.selected),
+      enemy: this.enemyRoster(),
     };
+  }
+
+  // The opponent's board for the scout panel. During combat this reads live HP
+  // straight off the sim; during planning it is the previewed line-up at full
+  // health.
+  enemyRoster() {
+    if (this.combat) {
+      return this.combat.units
+        .filter(u => u.team === 'enemy')
+        .map(u => ({
+          unit: u.unit, star: u.star,
+          hp: Math.max(0, Math.round(u.hp)), maxHp: u.maxHp,
+          frac: Math.max(0, u.hp / u.maxHp),
+          mana: u.maxMana ? Math.min(1, u.mana / u.maxMana) : 0,
+          alive: u.alive,
+        }));
+    }
+    if (this.phase !== PHASE.PLANNING) return [];
+    return this.previewEnemy().map(s => {
+      const unit = UNIT_BY_ID[s.id];
+      const st = statsFor(unit, s.star);
+      return {
+        unit, star: s.star, hp: st.maxHp, maxHp: st.maxHp,
+        frac: 1, mana: 0, alive: true,
+      };
+    });
   }
 
   // Everything the inspector panel needs about one unit. `entry` is null when

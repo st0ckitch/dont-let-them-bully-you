@@ -83,8 +83,11 @@ export class AutochessUI {
     this.cardsWrap = el('div', 'acCardsWrap');
     this.freezeBtn = el('button', 'acFreeze');
     this.freezeBtn.addEventListener('click', () => this.mode.toggleFreeze());
-    this.cardsWrap.append(this.cards, this.freezeBtn);
-    this.bottom.append(this.benchRow, this.shopSide, this.cardsWrap);
+    this.cardsWrap.append(this.benchRow, this.cards, this.freezeBtn);
+    this.bottom.append(this.shopSide, this.cardsWrap);
+
+    // ---- opponent scout panel ----
+    this.foe = el('div', 'acFoe');
 
     this.readyBtn = el('button', 'acReady', 'START ROUND');
     this.toast = el('div', 'acToast hidden');
@@ -95,7 +98,7 @@ export class AutochessUI {
     // stats boxes — an absolute offset silently collides the moment the rail
     // gains a row (it did, when board capacity got its own readout)
     this.rail.append(this.detail);
-    this.root.append(this.top, this.rail, this.floatLayer, this.bottom, this.readyBtn, this.toast, this.banner);
+    this.root.append(this.top, this.rail, this.foe, this.floatLayer, this.bottom, this.readyBtn, this.toast, this.banner);
 
     this.xpBtn.addEventListener('click', () => this.mode.buyXp());
     this.rollBtn.addEventListener('click', () => this.mode.reroll());
@@ -194,6 +197,7 @@ export class AutochessUI {
 
     this._renderShop(s);
     this._renderBench(s);
+    this._renderFoe(s);
     this._validateHover(s);
     // a hovered shop card wins while the pointer is on it; otherwise the panel
     // sticks to whatever is selected, so it survives moving the mouse away
@@ -263,6 +267,33 @@ export class AutochessUI {
     }, 160);
   }
 
+  _renderFoe(s) {
+    const foes = s.enemy || [];
+    if (!foes.length) { this.foe.classList.add('hidden'); return; }
+    this.foe.classList.remove('hidden');
+    const live = foes.filter(f => f.alive).length;
+    const totalFrac = foes.reduce((a, f) => a + f.frac, 0) / foes.length;
+    this.foe.innerHTML =
+      `<div class="acFoeHead">
+         <span>OPPONENT</span>
+         <b>${live}/${foes.length}</b>
+       </div>
+       <div class="acFoeTotal"><i style="width:${(totalFrac * 100).toFixed(1)}%"></i></div>
+       <div class="acFoeList">${foes.map(f => `
+         <div class="acFoeRow${f.alive ? '' : ' dead'}" style="--tier:${TIER_COLOR[f.unit.cost]}">
+           <span class="acFoePic">${this.portraits[f.unit.id]
+             ? `<img src="${this.portraits[f.unit.id]}" alt="">`
+             : f.unit.cfg.flag}</span>
+           <span class="acFoeInfo">
+             <span class="acFoeName">${f.unit.short}<em class="s${f.star}">${STAR.repeat(f.star)}</em></span>
+             <span class="acFoeBar"><i style="width:${(f.frac * 100).toFixed(1)}%"></i></span>
+             <span class="acFoeMana"><i style="width:${(f.mana * 100).toFixed(1)}%"></i></span>
+           </span>
+           <span class="acFoeHp">${f.hp}</span>
+         </div>`).join('')}</div>
+       ${s.phase === PHASE.PLANNING ? '<div class="acFoeHint">scouted — they scale with your board</div>' : ''}`;
+  }
+
   _renderDetail(d) {
     if (!d) { this.detail.classList.add('hidden'); return; }
     const u = d.unit;
@@ -324,6 +355,29 @@ export class AutochessUI {
   onTick(phase, timer) {
     const full = phase === PHASE.COMBAT ? 30 : phase === PHASE.PLANNING ? 30 : 3.2;
     this.timerFill.style.width = `${Math.max(0, Math.min(100, (timer / full) * 100))}%`;
+
+    // Enemy health changes every frame in combat, but onState() only fires on
+    // discrete events. Patch the existing rows' widths instead of rebuilding
+    // the panel's innerHTML 60 times a second.
+    if (phase !== PHASE.COMBAT) return;
+    const now = performance.now();
+    if (this._foeT && now - this._foeT < 80) return;
+    this._foeT = now;
+    const foes = this.mode.enemyRoster();
+    const rows = this.foe.querySelectorAll('.acFoeRow');
+    if (rows.length !== foes.length) { this._renderFoe(this.mode.snapshot()); return; }
+    let live = 0, sum = 0;
+    foes.forEach((f, i) => {
+      const row = rows[i];
+      row.classList.toggle('dead', !f.alive);
+      row.querySelector('.acFoeBar i').style.width = `${(f.frac * 100).toFixed(1)}%`;
+      row.querySelector('.acFoeMana i').style.width = `${(f.mana * 100).toFixed(1)}%`;
+      row.querySelector('.acFoeHp').textContent = f.hp;
+      if (f.alive) live++;
+      sum += f.frac;
+    });
+    this.foe.querySelector('.acFoeHead b').textContent = `${live}/${foes.length}`;
+    this.foe.querySelector('.acFoeTotal i').style.width = `${(100 * sum / foes.length).toFixed(1)}%`;
   }
 
   // ---- transient feedback ----
