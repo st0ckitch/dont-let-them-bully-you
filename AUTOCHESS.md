@@ -92,6 +92,33 @@ Numbers were cross-checked against a research pass over Riot patch notes and
 current-set data; the shop odds, streak breakpoints, sell values and mana rules
 above reflect corrections to several widely-mirrored but stale community tables.
 
+## The opponent
+
+The AI plays **the same game you do** (`ai.js`). It owns a roster, gold, XP and
+a level, rolls its own 5-card shop out of the **shared pool**, buys, merges,
+levels and fields its best units. Nothing is privileged — no stat bonuses, no
+invented star levels, no knowledge of your board. Its purchases really do remove
+copies you could have bought.
+
+It commits to its board at the start of planning, so you can **scout** it in the
+panel on the right before you commit yours.
+
+Difficulty lives entirely in `AI_TUNING` — level tempo, gold reserve, and rolls
+per round. Do not tune it with stat bonuses: that breaks the pool-and-star-up
+logic the player is learning, and makes a lost round unreadable.
+
+Measured over 300 simulated games (`tools/aitest.mjs`):
+
+| | AI | random baseline |
+| --- | --- | --- |
+| roster continuity round-to-round | 92% | ~25% |
+| distinct fighters used per game | 5.5 of 9 | 9 of 9 |
+| boards with 3+ copies at one star | 0 | common |
+| boards of ≤1 unit after round 3 | 0% | common |
+
+Against a scripted competent player it wins roughly a third of full games
+(`tools/gametest.mjs`), with games running ~13 rounds.
+
 ## The roster as units
 
 Cost tier sets the power budget; the fighter's existing 0–100 MMA stats

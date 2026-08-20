@@ -9,6 +9,7 @@ import * as Hex from './hex.js';
 import { Board3D } from './board3d.js';
 import { UnitView } from './unitview.js';
 import { UNIT_BY_ID, UNITS, sellValue, statsFor, abilityText } from './units.js';
+import { AiOpponent } from './ai.js';
 import { Combat, CombatUnit, setCombatRng, ROUND_TIME, playerDamage } from './combat.js';
 import {
   Pool, Roster, Economy, setShopRng,
@@ -21,19 +22,6 @@ const PLANNING_TIME = 30;   // seconds to shop and position
 const RESOLVE_TIME = 3.2;   // beat between the last death and the next planning phase
 const STAGE1_ROUNDS = 3;
 const STAGE_ROUNDS = 5;
-
-// Where a side's units stand, in preference order. Melee take the front rows,
-// reach units fall to the back — the same shape a player would build.
-const FRONT_SLOTS = [
-  { col: 3, row: 6 }, { col: 2, row: 6 }, { col: 4, row: 6 },
-  { col: 1, row: 6 }, { col: 5, row: 6 }, { col: 0, row: 6 }, { col: 6, row: 6 },
-];
-const BACK_SLOTS = [
-  { col: 3, row: 7 }, { col: 2, row: 7 }, { col: 4, row: 7 },
-  { col: 1, row: 7 }, { col: 5, row: 7 }, { col: 0, row: 7 }, { col: 6, row: 7 },
-];
-
-const mirrorCell = c => ({ col: Hex.COLS - 1 - c.col, row: Hex.ROWS - 1 - c.row });
 
 export class AutochessMode {
   // `assets` is the loadAssets() result plus a per-rig lookup.
@@ -68,6 +56,9 @@ export class AutochessMode {
     setShopRng(null);
     this.pool = new Pool();
     this.roster = new Roster(this.pool);
+    // shares the pool: the AI's purchases really do remove copies the player
+    // could have bought, which is what makes a finite pool mean anything
+    this.ai = new AiOpponent(this.pool);
     this.econ = new Economy();
     this.econ.level = 2;      // TFT hands you a unit and a level before 1-1
     this.econ.gold = 3;
@@ -104,8 +95,9 @@ export class AutochessMode {
     this.combat = null;
     for (const v of this.enemyViews) v.dispose();
     this.enemyViews = [];
-    this._enemyPreview = null; // fresh opponent each round
-    this._enemyPreviewFor = -1;
+
+    // the AI shops and re-forms its board for the round before the player acts
+    this.ai.takeTurn(this.roundIndex);
 
     this.econ.grantXp(XP_PER_ROUND);
     this.syncViews();
@@ -169,6 +161,7 @@ export class AutochessMode {
     this.timer = RESOLVE_TIME;
     const won = winner === 'player';
     this.econ.recordResult(won);
+    this.ai.settle(!won); // the AI banks its own income and streak too
 
     let dmg = 0;
     if (!won) {
@@ -198,18 +191,12 @@ export class AutochessMode {
     this.beginPlanning();
   }
 
-  // The opponent is generated during PLANNING, not at the bell, so it can be
-  // scouted before you commit — with a single AI there is no reason to hide it,
-  // and a board you cannot see is a board you cannot counter. Memoised on the
-  // player's board size (which is what sizes the enemy), so adding a unit
-  // re-rolls the matchup but merely re-rendering does not.
+  // The AI commits to its board once, at the start of planning, so the player
+  // can scout a board that will not change under them. With a single opponent
+  // there is no reason to hide it, and a board you cannot see is a board you
+  // cannot counter.
   previewEnemy() {
-    const size = this.roster.board.length;
-    if (!this._enemyPreview || this._enemyPreviewFor !== size) {
-      this._enemyPreview = this.enemyBoard();
-      this._enemyPreviewFor = size;
-    }
-    return this._enemyPreview;
+    return this.ai?.lastBoard || [];
   }
 
   toggleFreeze() {
@@ -220,38 +207,10 @@ export class AutochessMode {
   }
 
   // ---- opponent ----
-  // A single scaling AI board rather than seven simulated rivals: this mode is
-  // about testing the loop, and one opponent that ramps on a readable curve is
-  // far easier to balance against than an emergent lobby.
-  enemyBoard() {
-    const r = this.roundIndex;
-    // Size the opponent off the PLAYER'S board, not off a fixed curve. In TFT
-    // your opponents are other players climbing the same level ladder, so a
-    // board that ramps on round number alone runs away from anyone who banks
-    // gold instead of levelling — an 8-unit enemy against a level-5 player's
-    // 5 units is unwinnable regardless of how well the round was played.
-    // Pressure comes from star levels and cost tiers instead.
-    const playerBoard = Math.max(1, this.roster.board.length);
-    const count = Math.max(1, Math.min(9, playerBoard + (r >= 8 ? 1 : 0)));
-    const maxCost = Math.max(1, Math.min(5, 1 + Math.floor((r - 1) / 3)));
-    const twoStarChance = Math.max(0, Math.min(0.7, (r - 5) * 0.085));
-    const threeStarChance = Math.max(0, Math.min(0.2, (r - 13) * 0.035));
-
-    const front = [...FRONT_SLOTS], back = [...BACK_SLOTS];
-    const picks = [];
-    for (let i = 0; i < count; i++) {
-      const tierPool = UNITS.filter(u => u.cost <= maxCost);
-      const u = tierPool[Math.floor(Math.random() * tierPool.length)];
-      const roll = Math.random();
-      const star = roll < threeStarChance ? 3 : roll < twoStarChance ? 2 : 1;
-      const pool = u.range > 1 ? (back.length ? back : front) : (front.length ? front : back);
-      const slot = pool.shift();
-      if (!slot) break;
-      const c = mirrorCell(slot);
-      picks.push({ id: u.id, star, col: c.col, row: c.row });
-    }
-    return picks;
-  }
+  // The AI owns a roster, gold and a level and plays the same loop the player
+  // does (see ai.js). Its board is therefore whatever it has actually managed
+  // to buy and merge — it persists, concentrates on a few fighters, and climbs
+  // its own level ladder rather than being conjured to match the player.
 
   // ---- combat <-> visuals ----
   combatHooks() {
