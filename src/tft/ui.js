@@ -273,11 +273,14 @@ export class AutochessUI {
     this.foe.classList.remove('hidden');
     const live = foes.filter(f => f.alive).length;
     const totalFrac = foes.reduce((a, f) => a + f.frac, 0) / foes.length;
+    const hpFrac = Math.max(0, Math.min(1, (s.aiHp ?? 0) / 100));
     this.foe.innerHTML =
       `<div class="acFoeHead">
          <span>OPPONENT</span>
-         <b>${live}/${foes.length}</b>
+         <b class="acFoeHp2" data-low="${s.aiHp <= 30 ? 1 : 0}">${s.aiHp}</b>
        </div>
+       <div class="acFoeLife"><i style="width:${(hpFrac * 100).toFixed(1)}%"></i></div>
+       <div class="acFoeSub">Lv ${s.aiLevel} · ${s.aiGold}g · ${live}/${foes.length} alive</div>
        <div class="acFoeTotal"><i style="width:${(totalFrac * 100).toFixed(1)}%"></i></div>
        <div class="acFoeList">${foes.map(f => `
          <div class="acFoeRow${f.alive ? '' : ' dead'}" style="--tier:${TIER_COLOR[f.unit.cost]}">
@@ -368,6 +371,7 @@ export class AutochessUI {
     const foes = this.mode.enemyRoster();
     const rows = this.foe.querySelectorAll('.acFoeRow');
     if (rows.length !== foes.length) { this._renderFoe(this.mode.snapshot()); return; }
+    if (!foes.length) return;
     let live = 0, sum = 0;
     foes.forEach((f, i) => {
       const row = rows[i];
@@ -401,11 +405,12 @@ export class AutochessUI {
 
   onRoundEnd(r) {
     const txt = r.draw ? 'DRAW'
-      : r.won ? `ROUND WON  +${r.pay.total}g`
-        : `ROUND LOST  −${r.dmg} HP  +${r.pay.total}g`;
+      : r.won ? `ROUND WON  −${r.aiDmg} enemy HP`
+        : `ROUND LOST  −${r.dmg} HP`;
     this.banner.innerHTML =
       `<div class="acBannerMain ${r.won ? 'win' : r.draw ? '' : 'lose'}">${txt}</div>` +
-      `<div class="acBannerSub">${r.pay.base} base · ${r.pay.interest} interest · ${r.pay.streak} streak</div>`;
+      `<div class="acBannerSub">+${r.pay.total}g · ${r.pay.base} base · ${r.pay.interest} interest · ${r.pay.streak} streak` +
+      `${r.aiHp != null ? ` &nbsp;|&nbsp; opponent ${r.aiHp} HP` : ''}</div>`;
     this.banner.classList.remove('hidden', 'acBannerIn');
     void this.banner.offsetWidth;
     this.banner.classList.add('acBannerIn');
@@ -414,9 +419,11 @@ export class AutochessUI {
   }
 
   onGameOver(s) {
-    this.banner.innerHTML =
-      `<div class="acBannerMain lose">ELIMINATED</div>` +
-      `<div class="acBannerSub">You reached stage ${s.stage}-${s.round} at level ${s.level}</div>`;
+    this.banner.innerHTML = s.victory
+      ? `<div class="acBannerMain win">VICTORY</div>
+         <div class="acBannerSub">Opponent eliminated at stage ${s.label} — you finished on ${s.hp} HP</div>`
+      : `<div class="acBannerMain lose">ELIMINATED</div>
+         <div class="acBannerSub">You reached stage ${s.label} at level ${s.level} — opponent had ${s.aiHp} HP left</div>`;
     this.banner.classList.remove('hidden');
   }
 

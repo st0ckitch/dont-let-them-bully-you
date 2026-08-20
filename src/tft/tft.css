@@ -164,7 +164,17 @@ body.tftMode #gameMicBtn {
   display: flex; justify-content: space-between; align-items: baseline;
   font-size: 10px; letter-spacing: 2px; opacity: 0.7;
 }
-.acFoeHead b { font-size: 14px; color: #ff8a7a; opacity: 1; }
+.acFoeHead b { font-size: 20px; color: #ff8a7a; opacity: 1; line-height: 1; }
+.acFoeHead b[data-low='1'] { color: #ff4d4d; }
+
+/* the opponent's life total, mirroring the player's HP box on the left */
+.acFoeLife {
+  height: 5px; margin: 5px 0 3px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px; overflow: hidden;
+}
+.acFoeLife i { display: block; height: 100%; background: linear-gradient(90deg, #ff4d4d, #ff9d6b); transition: width 0.2s; }
+.acFoeSub { font-size: 9px; letter-spacing: 0.6px; opacity: 0.5; margin-bottom: 6px; }
 
 .acFoeTotal {
   height: 3px; margin: 5px 0 7px;
@@ -567,13 +577,119 @@ body.tftMode #gameMicBtn {
 .acDmg.crit { color: #ff7b5c; font-size: 21px; }
 .acDmg.heal { color: #7ef0a8; }
 
-/* ---------- narrow screens ---------- */
-@media (max-width: 900px) {
-  .acCard { width: 92px; }
+/* ---------- tablets / short desktop ---------- */
+@media (max-width: 1100px) and (min-width: 701px) {
+  .acCard { width: 104px; flex: 0 0 104px; }
   .acCardNick, .acCardAbil { display: none; }
-  .acBenchSlot { width: 44px; height: 44px; }
-  .acRail { width: 168px; top: 76px; }
+  .acBenchSlot { width: 48px; height: 48px; flex: 0 0 48px; }
+  .acRail { width: 184px; top: 76px; }
+  .acFoe { width: 164px; }
   .acDetBlurb { display: none; }
-  .acDetStats { grid-template-columns: 1fr; }
-  .acReady { bottom: 92px; right: 10px; padding: 10px 14px; font-size: 12px; }
+  .acReady { bottom: 186px; right: 10px; padding: 10px 14px; font-size: 12px; }
+}
+
+/* ---------- phones ----------
+   The desktop layout is two vertical columns flanking the board, which cannot
+   fit a 375px viewport — the shop alone is 668px wide. On phones the rail
+   becomes a horizontal status strip, the opponent collapses to a compact card,
+   and the shop stretches edge to edge with five slimmed cards. */
+@media (max-width: 700px) {
+  .acTop { top: 46px; padding: 4px 14px 6px; min-width: 150px; }
+  .acStage { font-size: 20px; }
+  .acPhase { font-size: 9px; }
+
+  /* status rail -> horizontal strip pinned under the nav */
+  .acRail {
+    left: 6px; right: 6px; top: 78px;
+    width: auto; max-height: none;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 5px;
+  }
+  .acRail > div { padding: 5px 7px; flex: 1 1 0; min-width: 0; }
+  .acHp { flex: 0 0 62px; align-items: baseline; }
+  .acHpVal { font-size: 20px; }
+  .acHpLbl { font-size: 8px; }
+  .acLvlTop b { font-size: 13px; }
+  .acLvlTop span, .acXpTxt { font-size: 8px; }
+  .acXpBar { margin: 3px 0 2px; }
+  .acCapTop b { font-size: 18px; }
+  .acCapTop i { font-size: 11px; }
+  .acCapLbl, .acCapHint { display: none; }
+  .acCapPips { margin: 3px 0 0; gap: 2px; }
+  .acCapPips span { width: 6px; height: 6px; }
+  .acStreak { display: none; }
+
+  /* opponent: compact card under the strip, on the right */
+  .acFoe { top: 140px; right: 6px; width: 130px; padding: 5px 6px 6px; }
+  .acFoeHead span { font-size: 8px; letter-spacing: 1px; }
+  .acFoeHead b { font-size: 15px; }
+  .acFoeSub { font-size: 7px; margin-bottom: 4px; }
+  .acFoeList { gap: 2px; }
+  .acFoeRow { grid-template-columns: 18px 1fr auto; gap: 4px; }
+  .acFoePic { width: 18px; height: 18px; border-radius: 4px; }
+  .acFoeName { font-size: 8px; }
+  .acFoeHp { font-size: 8px; }
+  .acFoeHint { display: none; }
+
+  /* inspector becomes a bottom sheet so it never fights the rail for space */
+  .acRail > .acDetail {
+    position: fixed;
+    left: 6px; right: 6px;
+    bottom: 212px;
+    width: auto;
+    z-index: 6;
+    padding: 8px 10px;
+  }
+  .acDetBlurb { display: none; }
+  .acDetStats { grid-template-columns: 1fr 1fr; gap: 0 8px; }
+  .acDetName { font-size: 15px; }
+
+  /* bottom cluster: one full-width column */
+  .acBottom {
+    left: 5px; right: 5px; bottom: 5px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 5px;
+  }
+  .acShopSide { flex-direction: row; width: auto; flex: 0 0 auto; order: 1; gap: 5px; }
+  .acGold { flex: 0 0 72px; padding: 4px 7px; }
+  .acGold b { font-size: 17px; }
+  .acSideBtn { flex: 1 1 0; padding: 4px 6px; }
+  .acSideBtn b { font-size: 11px; }
+  .acSideBtn span { font-size: 8px; }
+
+  .acCardsWrap { order: 2; gap: 5px; }
+  .acBench { align-self: stretch; justify-content: space-between; gap: 3px; }
+  .acBenchSlot { width: auto; height: 38px; flex: 1 1 0; min-width: 0; border-radius: 6px; }
+  .acStars { font-size: 8px; }
+
+  .acCards { gap: 4px; }
+  .acCard { width: auto; flex: 1 1 0; min-width: 0; height: 92px; border-radius: 7px; }
+  .acCardArt { height: 46px; }
+  .acCardNick, .acCardAbil { display: none; }
+  .acCardName { font-size: 10px; letter-spacing: 0.3px; padding: 3px 4px 0; }
+  .acCardFoot { padding: 2px 4px 3px; }
+  .acCardFoot b { font-size: 11px; }
+  .acPips i { width: 5px; height: 5px; }
+
+  .acFreeze { padding: 5px 8px; }
+  .acFreeze b { font-size: 10px; }
+  .acFreeze span { display: none; }
+
+  .acReady { right: 6px; bottom: 212px; padding: 9px 14px; font-size: 12px; letter-spacing: 1px; }
+
+  .acBannerMain { font-size: 30px; }
+  .acBannerSub { font-size: 10px; }
+  .acToast { bottom: 264px; font-size: 12px; }
+  .acDmg { font-size: 13px; }
+  .acDmg.crit { font-size: 18px; }
+}
+
+/* landscape phones: very little vertical room, so tighten the stack */
+@media (max-width: 900px) and (max-height: 460px) {
+  .acTop { top: 40px; }
+  .acRail { top: 52px; }
+  .acFoe { top: 108px; }
+  .acRail > .acDetail, .acReady { bottom: 170px; }
 }

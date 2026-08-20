@@ -1680,9 +1680,13 @@ canvas.addEventListener('pointerdown', e => {
   tftDragged = false;
 });
 
+// A finger never lands as cleanly as a mouse, so a 6px threshold read almost
+// every tap as a camera drag and swallowed the placement.
+const TFT_TAP_SLOP = matchMedia('(pointer: coarse)').matches ? 16 : 6;
+
 canvas.addEventListener('pointermove', e => {
   if (!tftActive) return;
-  if (Math.abs(e.clientX - tftDownX) + Math.abs(e.clientY - tftDownY) > 6) tftDragged = true;
+  if (Math.abs(e.clientX - tftDownX) + Math.abs(e.clientY - tftDownY) > TFT_TAP_SLOP) tftDragged = true;
   if (camDragging) return;
   const cell = tftCellFromEvent(e);
   tftMode.setHover(cell ? tftCellId(cell.col, cell.row) : null);
@@ -1739,9 +1743,17 @@ renderer.setAnimationLoop(() => {
     // a stable frame. Drag still orbits/tilts; double-click recentres.
     // 46 degrees of elevation is the shallowest angle that clears the cage's
     // near fence (2 units tall) while keeping the far row on screen.
+    // On a phone the binding constraint is WIDTH, not height: the 7-column grid
+    // is wider than a 375px viewport long before it is taller. Portrait pulls
+    // back until the outer columns fit, steepens toward top-down (which is more
+    // compact vertically), and aims below the floor so the board sits in the
+    // clear band between the status strip and the shop rather than under it.
     const aspect = camera.aspect;
-    const dist = aspect < 1.0 ? 19.5 : aspect < 1.5 ? 16.0 : 14.6;
-    const pitch = Math.max(0.55, Math.min(1.25, 0.80 - userY * 0.12));
+    const portrait = aspect < 0.8;
+    const dist = portrait ? 21 : aspect < 1.0 ? 19.5 : aspect < 1.5 ? 16.0 : 14.6;
+    const basePitch = portrait ? 1.0 : 0.80;
+    const lookY = portrait ? -1.2 : 0.35;
+    const pitch = Math.max(0.55, Math.min(1.3, basePitch - userY * 0.12));
     const yaw = userYaw * 0.6;
     camera.position.set(
       Math.sin(yaw) * Math.cos(pitch) * dist,
@@ -1753,7 +1765,7 @@ renderer.setAnimationLoop(() => {
       camera.position.y += (Math.random() - 0.5) * shake * 0.7;
       shake *= Math.exp(-5 * dt);
     }
-    camera.lookAt(0, tftMode.board.floorY + 0.35, 0);
+    camera.lookAt(0, tftMode.board.floorY + lookY, 0);
     faceFill.position.set(camera.position.x, camera.position.y + 1.2, camera.position.z);
     faceFill.target.position.set(0, tftMode.board.floorY + 1.0, 0);
     renderer.render(scene, camera);

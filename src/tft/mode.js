@@ -67,6 +67,7 @@ export class AutochessMode {
     this.roundIndex = 1;
     this.selected = null;
     this.frozen = false;
+    this.victory = false;
     this.active = true;
     this.board.setVisible(true);
     this.clearAll();
@@ -173,18 +174,28 @@ export class AutochessMode {
       this.ai.econ.payout();
     }
 
-    let dmg = 0;
-    if (!won && !draw) {
-      const survivors = this.combat ? this.combat.living('enemy') : [];
-      dmg = playerDamage(this.stage, survivors);
-      this.econ.hp = Math.max(0, this.econ.hp - dmg);
+    // Damage is symmetric: whoever loses the round takes it, from the winner's
+    // surviving units. Without this the opponent was literally immortal and the
+    // mode had no win condition at all — you could only ever lose.
+    let dmg = 0, aiDmg = 0;
+    if (!draw) {
+      const survivors = this.combat ? this.combat.living(won ? 'player' : 'enemy') : [];
+      const hit = playerDamage(this.stage, survivors);
+      if (won) {
+        aiDmg = hit;
+        this.ai.econ.hp = Math.max(0, this.ai.econ.hp - hit);
+      } else {
+        dmg = hit;
+        this.econ.hp = Math.max(0, this.econ.hp - hit);
+      }
     }
     const pay = this.econ.payout();
-    this.lastResult = { won, dmg, pay, draw };
+    this.lastResult = { won, dmg, aiDmg, pay, draw, aiHp: this.ai.econ.hp };
     this.ui?.onRoundEnd(this.lastResult);
     this.fx?.bell?.();
-    if (this.econ.hp <= 0) {
+    if (this.econ.hp <= 0 || this.ai.econ.hp <= 0) {
       this.phase = PHASE.OVER;
+      this.victory = this.ai.econ.hp <= 0 && this.econ.hp > 0;
       this.ui?.onGameOver(this.snapshot());
     }
     this.ui?.onState(this.snapshot());
@@ -462,6 +473,10 @@ export class AutochessMode {
       selected: this.selected,
       detail: this.detailFor(this.selected),
       enemy: this.enemyRoster(),
+      aiHp: this.ai?.econ.hp ?? 0,
+      aiLevel: this.ai?.econ.level ?? 0,
+      aiGold: this.ai?.econ.gold ?? 0,
+      victory: !!this.victory,
     };
   }
 
