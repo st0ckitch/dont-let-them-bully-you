@@ -45,15 +45,27 @@ function wantScore(ai, unitId) {
   const mine = ai.roster.entries.filter(e => e.unitId === unitId);
   const ones = mine.filter(e => e.star === 1).length;
   const twos = mine.filter(e => e.star === 2).length;
+  const threes = mine.filter(e => e.star === 3).length;
+  const copies = ones + 3 * twos + 9 * threes;
 
-  if (twos >= 2) return 1000 + unit.cost;   // completes a 3-star
-  if (ones >= 2) return 900 + unit.cost;    // completes a 2-star
-  if (twos >= 1) return 700 + unit.cost;    // chasing a 3-star
-  if (ones >= 1) return 600 + unit.cost;    // second copy, real progress
-  // a fighter it does not own yet is worth taking mainly if it upgrades the
-  // board — high cost, or it simply does not have enough bodies yet
+  // Already maxed, or holding enough for a 3-star. Further copies upgrade
+  // nothing and only drain the shared pool — left unguarded the AI kept buying
+  // past its own 3-stars and took 86% of a champion out of the game.
+  if (threes > 0 || copies >= 9) return -1;
+
+  // A 3-star needs THREE 2-stars, i.e. nine copies — not two 2-stars plus one.
+  // Scoring that seventh copy as "completes a 3-star" made the AI break its
+  // gold reserve for a card that merged nothing.
+  if (ones === 2 && twos === 2) return 1200 + unit.cost; // 2-star now, cascades to 3
+  if (ones >= 2) return 900 + unit.cost;                 // completes a 2-star now
+  if (twos >= 1) return 700 + unit.cost;                 // real progress toward a 3-star
+  if (ones >= 1) return 600 + unit.cost;                 // second copy
+  // A fighter it does not own yet is worth taking mainly if it upgrades the
+  // board — high cost, or it simply does not have enough bodies yet. Once its
+  // own carries are capped this is the only branch left, so cost has to weigh
+  // heavily: trading up to a bigger unit is what a player does with the gold.
   const short = ai.roster.entries.length < boardCapacity(ai.econ.level);
-  return (short ? 300 : 100) + unit.cost * 20;
+  return (short ? 300 : 120) + unit.cost * 45;
 }
 
 // Fielding order: stars first, then cost. A human plays their best board, so
@@ -118,12 +130,16 @@ export class AiOpponent {
 
     let bought = false;
     for (const c of ranked) {
+      if (c.score < 0) continue; // maxed out or pool-capped
       const unit = UNIT_BY_ID[c.id];
       if (this.econ.gold < unit.cost) continue;
-      // an upgrade is always worth breaking the reserve for; a speculative
-      // body is not
+      // An upgrade is always worth breaking the reserve for; a speculative body
+      // is not — UNLESS it is sitting on a pile. Once its own targets cap out
+      // the AI has nothing high-scoring left to buy, and without this it banks
+      // gold to the end of the game instead of converting it into board.
       const isUpgrade = c.score >= 900;
-      if (!isUpgrade && this.econ.gold - unit.cost < reserve) continue;
+      const flush = this.econ.gold >= reserve + 20;
+      if (!isUpgrade && !flush && this.econ.gold - unit.cost < reserve) continue;
 
       const completesMerge = this.roster.entries
         .filter(e => e.unitId === c.id && e.star === 1).length >= 2;
