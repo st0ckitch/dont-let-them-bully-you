@@ -291,7 +291,9 @@ export class AutochessUI {
            </span>
            <span class="acFoeHp">${f.hp}</span>
          </div>`).join('')}</div>
-       ${s.phase === PHASE.PLANNING ? '<div class="acFoeHint">scouted — they scale with your board</div>' : ''}`;
+       ${s.phase === PHASE.PLANNING
+         ? `<div class="acFoeHint">scouted · they are level ${this.mode.ai?.econ.level ?? '?'} with ${this.mode.ai?.econ.gold ?? '?'}g</div>`
+         : ''}`;
   }
 
   _renderDetail(d) {
