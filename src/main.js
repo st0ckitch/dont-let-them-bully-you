@@ -1715,7 +1715,18 @@ let tftDownX = 0, tftDownY = 0, tftDragged = false;
 
 function tftCellFromEvent(e) {
   if (!tftActive || !tftMode?.board?.loaded) return null;
-  _ndc.set((e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1);
+  // Normalise against the CANVAS RECT, not window.innerWidth/innerHeight.
+  // Those only agree when the canvas exactly fills the viewport at (0,0), which
+  // is false on iOS Safari: the collapsing URL bar leaves innerHeight
+  // disagreeing with the visible area, so clientY/innerHeight came out short and
+  // every tap resolved a few rows too far "up" — usually landing on the enemy
+  // half, where place() rejects it and nothing appears to happen.
+  const r = canvas.getBoundingClientRect();
+  if (!r.width || !r.height) return null;
+  _ndc.set(
+    ((e.clientX - r.left) / r.width) * 2 - 1,
+    -((e.clientY - r.top) / r.height) * 2 + 1,
+  );
   return tftMode.board.cellAtPointer(_ndc, camera);
 }
 
@@ -1898,4 +1909,7 @@ if (typeof ResizeObserver === 'function') {
   new ResizeObserver(() => applyViewportSize()).observe(document.documentElement);
 }
 window.addEventListener('orientationchange', () => setTimeout(applyViewportSize, 50));
+// iOS changes the visible area when its URL bar collapses without always firing
+// a window resize, which leaves the canvas taller than what you can see.
+window.visualViewport?.addEventListener('resize', applyViewportSize);
 applyViewportSize();
