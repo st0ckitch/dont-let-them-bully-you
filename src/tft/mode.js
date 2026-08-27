@@ -5,18 +5,18 @@
 // the sim resolves) -> RESOLVE (damage, gold, streak) -> next round.
 
 import * as THREE from 'three';
-import * as Hex from './hex.js?v=202608271907';
-import { Board3D } from './board3d.js?v=202608271907';
-import { UnitView } from './unitview.js?v=202608271907';
-import { UNIT_BY_ID, UNITS, sellValue, statsFor, abilityText } from './units.js?v=202608271907';
-import { AiOpponent } from './ai.js?v=202608271907';
-import { NetMatch, canonicalUnits } from './netmatch.js?v=202608271907';
-import { Combat, CombatUnit, setCombatRng, ROUND_TIME, playerDamage } from './combat.js?v=202608271907';
-import { seededRng } from '../fight.js?v=202608271907';
+import * as Hex from './hex.js?v=202608271934';
+import { Board3D } from './board3d.js?v=202608271934';
+import { UnitView } from './unitview.js?v=202608271934';
+import { UNIT_BY_ID, UNITS, sellValue, statsFor, abilityText } from './units.js?v=202608271934';
+import { AiOpponent } from './ai.js?v=202608271934';
+import { NetMatch, canonicalUnits } from './netmatch.js?v=202608271934';
+import { Combat, CombatUnit, setCombatRng, ROUND_TIME, playerDamage } from './combat.js?v=202608271934';
+import { seededRng } from '../fight.js?v=202608271934';
 import {
   Pool, Roster, Economy, setShopRng,
   SHOP_SIZE, REROLL_COST, XP_COST, XP_PER_ROUND, BENCH_SLOTS, boardCapacity,
-} from './shop.js?v=202608271907';
+} from './shop.js?v=202608271934';
 
 export const PHASE = { PLANNING: 'planning', COMBAT: 'combat', RESOLVE: 'resolve', OVER: 'over' };
 
@@ -91,6 +91,11 @@ export class AutochessMode {
     this.selected = null;
     this.frozen = false;
     this.victory = false;
+    // damage dealt by MY fighters, keyed by unitId: per-fight and whole-game.
+    // Kept by champion rather than by roster entry — entries merge and sell,
+    // but "how much has Cotne done for me" survives all of that.
+    this.dmgRound = {};
+    this.dmgTotal = {};
     this.active = true;
     this.board.setVisible(true);
     this.clearAll();
@@ -142,6 +147,7 @@ export class AutochessMode {
   // Both peers land here with identical arguments and run the identical fight.
   _runNetRound(round, hostBoard, guestBoard, seed) {
     this.waitingForPeer = false;
+    this.dmgRound = {};
     setCombatRng(seededRng(seed));
     this.phase = PHASE.COMBAT;
     this.timer = ROUND_TIME;
@@ -217,6 +223,7 @@ export class AutochessMode {
     }
     this.phase = PHASE.COMBAT;
     this.timer = ROUND_TIME;
+    this.dmgRound = {}; // the meter's ROUND tab covers the current/last fight
 
     const enemySpecs = this.previewEnemy();
     const playerUnits = placed.map(e => {
@@ -349,6 +356,10 @@ export class AutochessMode {
       },
 
       onDamage: (src, tgt, dealt, type, crit) => {
+        if (src.team === this.myTeam) {
+          this.dmgRound[src.unit.id] = (this.dmgRound[src.unit.id] || 0) + dealt;
+          this.dmgTotal[src.unit.id] = (this.dmgTotal[src.unit.id] || 0) + dealt;
+        }
         tgt.view?.flash();
         tgt.view?.hit(src.x, src.z, crit ? 0.5 : 0.28);
         this.fx?.impact?.(type === 'magic' ? 'kick' : 'punch', dealt > tgt.maxHp * 0.12, crit);
@@ -548,6 +559,14 @@ export class AutochessMode {
 
     for (const v of this.views.values()) v.update(dt, this.camera);
     for (const v of this.enemyViews) v.update(dt, this.camera);
+  }
+
+  // Rows for the damage meter, sorted hardest-hitting first.
+  damageRows(which) {
+    const src = which === 'total' ? this.dmgTotal : this.dmgRound;
+    return Object.entries(src)
+      .map(([id, dmg]) => ({ id, unit: UNIT_BY_ID[id], dmg }))
+      .sort((a, b) => b.dmg - a.dmg);
   }
 
   snapshot() {

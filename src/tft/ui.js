@@ -3,9 +3,9 @@
 // Built imperatively against a container the mode owns, so none of it exists
 // (or costs anything) while the game is in auto-sim or control mode.
 
-import { TIER_COLOR, sellValue, UNIT_BY_ID } from './units.js?v=202608271907';
-import { PHASE } from './mode.js?v=202608271907';
-import { REROLL_COST, XP_COST, XP_PER_BUY, BENCH_SLOTS } from './shop.js?v=202608271907';
+import { TIER_COLOR, sellValue, UNIT_BY_ID } from './units.js?v=202608271934';
+import { PHASE } from './mode.js?v=202608271934';
+import { REROLL_COST, XP_COST, XP_PER_BUY, BENCH_SLOTS } from './shop.js?v=202608271934';
 
 const el = (tag, cls, html) => {
   const e = document.createElement(tag);
@@ -133,8 +133,27 @@ export class AutochessUI {
     this.cardsWrap.append(this.benchRow, this.cards, this.actions);
     this.bottom.append(this.shopSide, this.cardsWrap);
 
-    // ---- opponent scout panel ----
+    // ---- right column: opponent scout + damage meter ----
+    // Desktop opens both; phones start them collapsed to a one-line chip —
+    // screen space is the scarce resource there, and both are reference
+    // panels, not controls.
+    const mobile = matchMedia('(max-width: 700px)').matches;
+    this._foeOpen = !mobile;
+    this._meterOpen = !mobile;
+    this._meterTab = 'round';
     this.foe = el('div', 'acFoe');
+    this.meter = el('div', 'acMeter hidden');
+    this.right = el('div', 'acRight');
+    this.right.append(this.foe, this.meter);
+    // headers toggle, tabs switch — delegated so re-renders cannot orphan them
+    tapify(this.foe, e => {
+      if (e.target.closest('.acFoeHead')) { this._foeOpen = !this._foeOpen; this._renderFoe(this.last || {}); }
+    });
+    tapify(this.meter, e => {
+      const tab = e.target.closest('[data-tab]');
+      if (tab) { this._meterTab = tab.dataset.tab; this._renderMeter(); return; }
+      if (e.target.closest('.acMeterHead')) { this._meterOpen = !this._meterOpen; this._renderMeter(); }
+    });
 
     this.readyBtn = el('button', 'acReady', 'START ROUND');
     this.toast = el('div', 'acToast hidden');
@@ -146,7 +165,7 @@ export class AutochessUI {
     // gains a row (it did, when board capacity got its own readout)
     this.rail.append(this.detail);
     this.actions.append(this.freezeBtn, this.readyBtn);
-    this.root.append(this.top, this.rail, this.foe, this.floatLayer, this.bottom, this.toast, this.banner);
+    this.root.append(this.top, this.rail, this.right, this.floatLayer, this.bottom, this.toast, this.banner);
 
     tapify(this.xpBtn, () => this.mode.buyXp());
     tapify(this.rollBtn, () => this.mode.reroll());
@@ -248,6 +267,7 @@ export class AutochessUI {
     this._renderShop(s);
     this._renderBench(s);
     this._renderFoe(s);
+    this._renderMeter();
     this._validateHover(s);
     // a hovered shop card wins while the pointer is on it; otherwise the panel
     // sticks to whatever is selected, so it survives moving the mouse away
@@ -321,30 +341,30 @@ export class AutochessUI {
 
   _renderFoe(s) {
     const foes = s.enemy || [];
-    // Online there is no board to scout during planning — the opponent is still
-    // choosing — but their life total still matters, so keep the panel up.
-    if (!foes.length && s.online) {
-      this.foe.classList.remove('hidden');
-      const hp = Math.max(0, Math.min(100, s.aiHp ?? 0));
-      this.foe.innerHTML =
-        `<div class="acFoeHead"><span>OPPONENT</span>` +
-        `<b class="acFoeHp2" data-low="${s.aiHp <= 30 ? 1 : 0}">${s.aiHp}</b></div>` +
-        `<div class="acFoeLife"><i style="width:${hp}%"></i></div>` +
-        `<div class="acFoeSub">${s.waitingForPeer ? 'waiting for their board…' : 'choosing their board'}</div>`;
-      return;
-    }
-    if (!foes.length) { this.foe.classList.add('hidden'); return; }
+    if (!foes.length && !s.online) { this.foe.classList.add('hidden'); return; }
     this.foe.classList.remove('hidden');
-    const live = foes.filter(f => f.alive).length;
-    const totalFrac = foes.reduce((a, f) => a + f.frac, 0) / foes.length;
-    const hpFrac = Math.max(0, Math.min(1, (s.aiHp ?? 0) / 100));
-    this.foe.innerHTML =
+    this.foe.classList.toggle('acClosed', !this._foeOpen);
+    const hp = Math.max(0, Math.min(100, s.aiHp ?? 0));
+    // header + life bar survive the collapse — the opponent's health is the
+    // one number worth a permanent slot on screen
+    const head =
       `<div class="acFoeHead">
          <span>OPPONENT</span>
          <b class="acFoeHp2" data-low="${s.aiHp <= 30 ? 1 : 0}">${s.aiHp}</b>
+         <em class="acChev">${this._foeOpen ? '▾' : '▸'}</em>
        </div>
-       <div class="acFoeLife"><i style="width:${(hpFrac * 100).toFixed(1)}%"></i></div>
-       <div class="acFoeSub">Lv ${s.aiLevel} · ${s.aiGold}g · ${live}/${foes.length} alive</div>
+       <div class="acFoeLife"><i style="width:${hp.toFixed(1)}%"></i></div>`;
+    if (!this._foeOpen) { this.foe.innerHTML = head; return; }
+    if (!foes.length) {
+      // online planning: the opponent is still choosing, nothing to scout yet
+      this.foe.innerHTML = head +
+        `<div class="acFoeSub">${s.waitingForPeer ? 'waiting for their board…' : 'choosing their board'}</div>`;
+      return;
+    }
+    const live = foes.filter(f => f.alive).length;
+    const totalFrac = foes.reduce((a, f) => a + f.frac, 0) / foes.length;
+    this.foe.innerHTML = head +
+      `<div class="acFoeSub">${s.online ? '' : `Lv ${s.aiLevel} · ${s.aiGold}g · `}${live}/${foes.length} alive</div>
        <div class="acFoeTotal"><i style="width:${(totalFrac * 100).toFixed(1)}%"></i></div>
        <div class="acFoeList">${foes.map(f => `
          <div class="acFoeRow${f.alive ? '' : ' dead'}" style="--tier:${TIER_COLOR[f.unit.cost]}">
@@ -358,9 +378,42 @@ export class AutochessUI {
            </span>
            <span class="acFoeHp">${f.hp}</span>
          </div>`).join('')}</div>
-       ${s.phase === PHASE.PLANNING
+       ${s.phase === PHASE.PLANNING && !s.online
          ? `<div class="acFoeHint">scouted · they are level ${this.mode.ai?.econ.level ?? '?'} with ${this.mode.ai?.econ.gold ?? '?'}g</div>`
          : ''}`;
+  }
+
+  // My fighters' damage output — the ROUND tab covers the current or most
+  // recent fight, TOTAL the whole game. Data lives in mode.damageRows().
+  _renderMeter() {
+    const m = this.mode;
+    if (!m.active) { this.meter.classList.add('hidden'); return; }
+    this.meter.classList.remove('hidden');
+    this.meter.classList.toggle('acClosed', !this._meterOpen);
+    const head =
+      `<div class="acMeterHead">
+         <span>MY DAMAGE</span>
+         <em class="acChev">${this._meterOpen ? '▾' : '▸'}</em>
+       </div>`;
+    if (!this._meterOpen) { this.meter.innerHTML = head; return; }
+    const rows = m.damageRows(this._meterTab);
+    const max = rows[0]?.dmg || 1;
+    this.meter.innerHTML = head +
+      `<div class="acMeterTabs">
+         <button class="${this._meterTab === 'round' ? 'on' : ''}" data-tab="round">ROUND</button>
+         <button class="${this._meterTab === 'total' ? 'on' : ''}" data-tab="total">TOTAL</button>
+       </div>
+       <div class="acMeterList">${rows.length ? rows.map(r => `
+         <div class="acMeterRow" style="--tier:${TIER_COLOR[r.unit.cost]}">
+           <span class="acFoePic">${this.portraits[r.id]
+             ? `<img src="${this.portraits[r.id]}" alt="">`
+             : r.unit.cfg.flag}</span>
+           <span class="acMeterInfo">
+             <span class="acMeterName">${r.unit.short}</span>
+             <span class="acMeterBar"><i style="width:${(100 * r.dmg / max).toFixed(1)}%"></i></span>
+           </span>
+           <span class="acMeterVal">${Math.round(r.dmg)}</span>
+         </div>`).join('') : '<div class="acMeterEmpty">no damage yet</div>'}</div>`;
   }
 
   _renderDetail(d) {
@@ -433,12 +486,21 @@ export class AutochessUI {
     // the panel's innerHTML 60 times a second.
     if (phase !== PHASE.COMBAT) return;
     const now = performance.now();
-    if (this._foeT && now - this._foeT < 80) return;
+    if (this._foeT && now - this._foeT < 100) return;
     this._foeT = now;
+
+    // damage accrues continuously; a ~3Hz re-render keeps the meter live
+    // without paying full innerHTML churn every frame
+    if (this._meterOpen && (!this._meterT || now - this._meterT > 300)) {
+      this._meterT = now;
+      this._renderMeter();
+    }
+
+    if (!this._foeOpen) return; // collapsed: HP only changes on resolve, via onState
     const foes = this.mode.enemyRoster();
+    if (!foes.length) return;
     const rows = this.foe.querySelectorAll('.acFoeRow');
     if (rows.length !== foes.length) { this._renderFoe(this.mode.snapshot()); return; }
-    if (!foes.length) return;
     let live = 0, sum = 0;
     foes.forEach((f, i) => {
       const row = rows[i];
@@ -449,8 +511,10 @@ export class AutochessUI {
       if (f.alive) live++;
       sum += f.frac;
     });
-    this.foe.querySelector('.acFoeHead b').textContent = `${live}/${foes.length}`;
-    this.foe.querySelector('.acFoeTotal i').style.width = `${(100 * sum / foes.length).toFixed(1)}%`;
+    const sub = this.foe.querySelector('.acFoeSub');
+    if (sub) sub.textContent = `${this.last?.online ? '' : `Lv ${this.last?.aiLevel} · ${this.last?.aiGold}g · `}${live}/${foes.length} alive`;
+    const tot = this.foe.querySelector('.acFoeTotal i');
+    if (tot) tot.style.width = `${(100 * sum / foes.length).toFixed(1)}%`;
   }
 
   // ---- transient feedback ----

@@ -6,9 +6,9 @@
 // cell coordinates, exactly like TFT paints its hexes over the arena terrain.
 
 import * as THREE from 'three';
-import { GLTFLoader } from '../../vendor/GLTFLoader.js?v=202608271907';
-import { MeshoptDecoder } from '../../vendor/meshopt_decoder.module.js?v=202608271907';
-import * as Hex from './hex.js?v=202608271907';
+import { GLTFLoader } from '../../vendor/GLTFLoader.js?v=202608271934';
+import { MeshoptDecoder } from '../../vendor/meshopt_decoder.module.js?v=202608271934';
+import * as Hex from './hex.js?v=202608271934';
 
 // Board footprint in world units. The grid is ~7.5 x 7.3, so 10 leaves a
 // comfortable margin between the outer columns and the cage fence.
