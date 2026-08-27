@@ -42,3 +42,18 @@ BIGERR=0.02 node decimate.mjs <meshy.glb> ../assets/tft_board.glb 60000 ./tex/bc
 Note: `meshoptimizer`'s `compactMesh()` rewrites the index array **in place**
 *and* returns the remap. Applying that remap afterwards double-maps it and
 collapses the mesh to a single shard.
+
+## Deploying
+
+Run the stamper before every push:
+
+```
+node tools/stamp.mjs .
+```
+
+GitHub Pages caches each file independently for 10 minutes, so without this a
+returning browser can mix modules from two different builds — new code calling
+into a stale module throws mid-click, which reads as "buttons randomly stopped
+working". Stamping puts the same `?v=<timestamp>` on every internal import, so
+a client loads either the whole old build or the whole new one, never a mix.
+The loading screen shows the stamp so you can tell which one you're on.

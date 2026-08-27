@@ -6,7 +6,7 @@
 // through into this mode. Cost tier is the one genuinely new axis: it sets the
 // power budget, exactly like TFT's 1-5 cost ladder.
 
-import { FIGHTERS } from '../config.js';
+import { FIGHTERS } from '../config.js?v=202608271834';
 
 // ---- cost tiers ----
 // Thematic ladder: the office crew comes cheap, the two real UFC champions are

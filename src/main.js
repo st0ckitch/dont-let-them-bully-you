@@ -1,17 +1,17 @@
 import * as THREE from 'three';
-import { FIGHTERS } from './config.js';
-import { loadAssets } from './anim.js';
-import { Fighter3D } from './fighter3d.js';
-import { Engine, simFight, setFightRng, seededRng } from './fight.js';
-import { Net, PROTOCOL_VERSION } from './net.js';
-import { AutochessMode, PHASE as TFT_PHASE } from './tft/mode.js';
-import { AutochessUI } from './tft/ui.js';
-import { cellId as tftCellId } from './tft/hex.js';
+import { FIGHTERS } from './config.js?v=202608271834';
+import { loadAssets } from './anim.js?v=202608271834';
+import { Fighter3D } from './fighter3d.js?v=202608271834';
+import { Engine, simFight, setFightRng, seededRng } from './fight.js?v=202608271834';
+import { Net, PROTOCOL_VERSION } from './net.js?v=202608271834';
+import { AutochessMode, PHASE as TFT_PHASE } from './tft/mode.js?v=202608271834';
+import { AutochessUI } from './tft/ui.js?v=202608271834';
+import { cellId as tftCellId } from './tft/hex.js?v=202608271834';
 
 // Build stamp. GitHub Pages serves assets with max-age=600, so a phone can run
 // ten-minute-old modules after a deploy and look like nothing shipped. This
 // shows on the loading screen so "did it update?" is answerable at a glance.
-const BUILD = '2026-08-27 17:55';
+const BUILD = '2026-08-27 18:34';
 window.__BUILD = BUILD;
 
 const canvas = document.querySelector('#scene');
