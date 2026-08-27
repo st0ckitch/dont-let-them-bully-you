@@ -174,6 +174,25 @@ class FX {
     });
   }
 
+  // iOS refuses HTMLAudioElement.play() outside a user gesture until each
+  // element has been played once from inside one. Do that silently on the
+  // first real interaction, or the very first voice line of a session is lost.
+  unlockElements() {
+    const els = [...Object.values(this.voices || {}), ...Object.values(this.announces || {})];
+    if (this._elementsUnlocked || !els.length) return;
+    this._elementsUnlocked = true;
+    for (const a of els) {
+      try {
+        a.muted = true;
+        const p = a.play();
+        const restore = () => { try { a.pause(); a.currentTime = 0; } catch { /* ignore */ } a.muted = false; };
+        if (p && p.then) p.then(restore).catch(restore); else restore();
+      } catch {
+        a.muted = false;
+      }
+    }
+  }
+
   loadVoices(cfgs) {
     this.voices = {};
     this.announces = {};
@@ -487,6 +506,20 @@ class FX {
 }
 const fx = new FX();
 window.__fx = fx;
+
+// A WebAudio context is suspended whenever the page is backgrounded — a tab
+// switch, a phone lock, an incoming call — and nothing ever resumed it, so
+// sound effects and voice lines silently stopped for the rest of the session.
+// init() is idempotent and cheap, so resume on any gesture and on regaining
+// visibility rather than only on the four buttons that used to call it.
+const resumeAudio = () => {
+  fx.init();
+  fx.unlockElements();
+};
+for (const ev of ['pointerdown', 'keydown', 'touchstart']) {
+  document.addEventListener(ev, resumeAudio, { capture: true, passive: true });
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden) fx.init(); });
 
 // ---------- UI ----------
 const $ = s => document.querySelector(s);

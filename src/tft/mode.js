@@ -192,6 +192,7 @@ export class AutochessMode {
     const pay = this.econ.payout();
     this.lastResult = { won, dmg, aiDmg, pay, draw, aiHp: this.ai.econ.hp };
     this.ui?.onRoundEnd(this.lastResult);
+    this.fx?.stopMusic?.();
     this.fx?.bell?.();
     if (this.econ.hp <= 0 || this.ai.econ.hp <= 0) {
       this.phase = PHASE.OVER;
@@ -258,6 +259,12 @@ export class AutochessMode {
         tgt.view?.flash();
         tgt.view?.hit(src.x, src.z, crit ? 0.5 : 0.28);
         this.fx?.impact?.(type === 'magic' ? 'kick' : 'punch', dealt > tgt.maxHp * 0.12, crit);
+        // the fighters have voice lines in the other modes; autochess had none
+        // wired at all. critVoice throttles itself, so a busy board stays sane.
+        if (crit && src.team === 'player') {
+          this.fx?.critVoice?.(src.unit.cfg);
+          this.fx?.duckMusic?.();
+        }
         this.ui?.onFloatDamage?.(tgt, Math.round(dealt), crit, type);
       },
 
