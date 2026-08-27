@@ -8,6 +8,12 @@ import { AutochessMode, PHASE as TFT_PHASE } from './tft/mode.js';
 import { AutochessUI } from './tft/ui.js';
 import { cellId as tftCellId } from './tft/hex.js';
 
+// Build stamp. GitHub Pages serves assets with max-age=600, so a phone can run
+// ten-minute-old modules after a deploy and look like nothing shipped. This
+// shows on the loading screen so "did it update?" is answerable at a glance.
+const BUILD = '2026-08-27 17:55';
+window.__BUILD = BUILD;
+
 const canvas = document.querySelector('#scene');
 // perf tiers: phones get a lower pixel-ratio cap and smaller shadow maps;
 // high-DPR phones skip MSAA entirely (the DPR already supersamples)
@@ -1614,7 +1620,7 @@ const loadText = $('#loadText');
 
 loadAssets(FIGHTERS, (loaded, total) => {
   loadFill.style.width = `${Math.round((loaded / total) * 100)}%`;
-  loadText.textContent = `Loading arena… ${loaded}/${total}`;
+  loadText.textContent = `Loading arena… ${loaded}/${total}  ·  build ${BUILD}`;
 }).then(({ models, clipSets, overlayDeltas, octagon }) => {
   // kept for the autochess mode: it clones these models per board unit and
   // hides the octagon while its own cage is on screen
