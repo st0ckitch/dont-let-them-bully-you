@@ -80,6 +80,8 @@ body.tftMode #gameMicBtn {
 }
 [data-phase='combat'] .acTimerFill { background: linear-gradient(90deg, #ff6b4a, #ffb03a); }
 
+.acBuild { font-size: 7px; letter-spacing: 1px; opacity: 0.35; }
+
 /* ---------- left rail ---------- */
 .acRail {
   position: absolute;

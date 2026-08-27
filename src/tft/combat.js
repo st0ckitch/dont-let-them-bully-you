@@ -10,8 +10,8 @@
 // mana from attacking and from taking damage, and cast a signature ability the
 // moment mana fills.
 
-import * as Hex from './hex.js?v=202608271834';
-import { statsFor, ATTACK_IMPACT_AT } from './units.js?v=202608271834';
+import * as Hex from './hex.js?v=202608271851';
+import { statsFor, ATTACK_IMPACT_AT } from './units.js?v=202608271851';
 
 let rng = Math.random;
 export function setCombatRng(fn) { rng = fn || Math.random; }

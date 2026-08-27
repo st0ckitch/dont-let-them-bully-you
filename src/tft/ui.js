@@ -3,9 +3,9 @@
 // Built imperatively against a container the mode owns, so none of it exists
 // (or costs anything) while the game is in auto-sim or control mode.
 
-import { TIER_COLOR, sellValue, UNIT_BY_ID } from './units.js?v=202608271834';
-import { PHASE } from './mode.js?v=202608271834';
-import { REROLL_COST, XP_COST, XP_PER_BUY, BENCH_SLOTS } from './shop.js?v=202608271834';
+import { TIER_COLOR, sellValue, UNIT_BY_ID } from './units.js?v=202608271851';
+import { PHASE } from './mode.js?v=202608271851';
+import { REROLL_COST, XP_COST, XP_PER_BUY, BENCH_SLOTS } from './shop.js?v=202608271851';
 
 const el = (tag, cls, html) => {
   const e = document.createElement(tag);
@@ -36,7 +36,8 @@ export class AutochessUI {
     this.timerBar = el('div', 'acTimerBar');
     this.timerFill = el('div', 'acTimerFill');
     this.timerBar.appendChild(this.timerFill);
-    this.top.append(this.stageLabel, this.phaseLabel, this.timerBar);
+    this.buildTag = el('div', 'acBuild', window.__BUILD || '');
+    this.top.append(this.stageLabel, this.phaseLabel, this.timerBar, this.buildTag);
 
     // ---- left rail: player state ----
     this.rail = el('div', 'acRail');
