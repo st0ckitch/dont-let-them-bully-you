@@ -217,6 +217,8 @@ export class AutochessUI {
 
     const planning = s.phase === PHASE.PLANNING;
     this.readyBtn.classList.toggle('hidden', !planning);
+    this.readyBtn.textContent = s.online ? 'LOCK IN' : 'START ROUND';
+    this.readyBtn.disabled = !!s.waitingForPeer;
     this.root.dataset.phase = s.phase;
   }
 
@@ -281,6 +283,18 @@ export class AutochessUI {
 
   _renderFoe(s) {
     const foes = s.enemy || [];
+    // Online there is no board to scout during planning — the opponent is still
+    // choosing — but their life total still matters, so keep the panel up.
+    if (!foes.length && s.online) {
+      this.foe.classList.remove('hidden');
+      const hp = Math.max(0, Math.min(100, s.aiHp ?? 0));
+      this.foe.innerHTML =
+        `<div class="acFoeHead"><span>OPPONENT</span>` +
+        `<b class="acFoeHp2" data-low="${s.aiHp <= 30 ? 1 : 0}">${s.aiHp}</b></div>` +
+        `<div class="acFoeLife"><i style="width:${hp}%"></i></div>` +
+        `<div class="acFoeSub">${s.waitingForPeer ? 'waiting for their board…' : 'choosing their board'}</div>`;
+      return;
+    }
     if (!foes.length) { this.foe.classList.add('hidden'); return; }
     this.foe.classList.remove('hidden');
     const live = foes.filter(f => f.alive).length;

@@ -92,6 +92,40 @@ Numbers were cross-checked against a research pass over Riot patch notes and
 current-set data; the shop odds, streak breakpoints, sell values and mana rules
 above reflect corrections to several widely-mirrored but stale community tables.
 
+## Multiplayer
+
+Pick **Autochess** in the mode selector, then CREATE LOBBY / JOIN with the same
+4-digit code the octagon modes use, and both press READY.
+
+It works the way the octagon mode does — by **not** streaming state. `combat.js`
+is bit-deterministic (`tools/determinism.mjs` proves it over 200 seeds), so peers
+only exchange **boards**: a handful of `{id, star, cell}` per round. Each side
+then runs the identical fight locally and reaches the same result. One message
+per player per round, and no server.
+
+Two invariants make that safe, both enforced in `netmatch.js`:
+
+- **Canonical coordinates.** The host owns rows 4-7 and the guest rows 0-3, on
+  *both* peers. The guest's screen is rotated 180° instead of its data —
+  `cellAtPointer()` goes through `root.worldToLocal()`, so picking inverts the
+  rotation for free and no coordinate is ever mirrored by hand.
+- **Canonical order.** The units array is always `[host…, guest…]`. Feeding the
+  same units in a different order produces a *different* fight — the
+  determinism test asserts this explicitly.
+
+The board exchange is also the barrier: a round resolves only when both boards
+are in hand, so the two clocks re-sync every round with no timing message. The
+per-round seed is derived from the match seed, so it costs nothing to agree.
+
+Each player keeps their **own** economy, shop and pool — there is no contest for
+copies. That is a deliberate simplification: a shared pool would need an
+authoritative owner and action reconciliation, which is a far larger protocol
+for a 1v1.
+
+`tools/nettest.mjs` plays a full 12-round match between two peers over a mock
+transport and asserts every damage event matched, in order, on both sides —
+including under reversed delivery and duplicate submissions.
+
 ## The opponent
 
 The AI plays **the same game you do** (`ai.js`). It owns a roster, gold, XP and

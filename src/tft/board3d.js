@@ -186,6 +186,25 @@ export class Board3D {
 
   setVisible(on) { this.root.visible = on; }
 
+  // The online guest owns rows 0-3 in canonical coordinates but still wants to
+  // look at its own half from the near side. Rotating the whole board is safer
+  // than mirroring the data: cellAtPointer() goes through root.worldToLocal(),
+  // so picking inverts the rotation for free and no coordinate ever has to be
+  // flipped by hand — which is exactly where a desync would hide.
+  setFlipped(on) {
+    this.flipped = !!on;
+    this.root.rotation.y = on ? Math.PI : 0;
+    this.root.updateMatrixWorld(true);
+    // Recolour from the LOCAL player's point of view. The cell's canonical half
+    // never changes, but "mine" is rows 0-3 for the flipped side, and a player
+    // whose own half glows enemy-red is reading the board backwards.
+    for (const cell of this.cells.values()) {
+      const mine = Hex.isPlayerHalf(cell.row) !== this.flipped;
+      cell.side = mine ? 'player' : 'enemy';
+    }
+    this.setHighlights(this._state);
+  }
+
   // ---- picking ----
   // Raycast against the floor plane rather than the cage mesh: the plane is
   // exact, costs nothing, and still resolves a cell when the pointer is over a

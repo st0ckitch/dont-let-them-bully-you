@@ -1210,6 +1210,11 @@ const netCallbacks = {
 };
 
 function onNetMsg(d) {
+  // autochess round traffic is handled by the mode's own state machine
+  if (typeof d.t === 'string' && d.t.startsWith('ac-')) {
+    tftMode?.netMatch?.onMessage(d);
+    return;
+  }
   switch (d.t) {
     case 'hello':
     case 'pick': {
@@ -1247,9 +1252,14 @@ function onNetMsg(d) {
       break;
     case 'start':
       if (typeof d.seed !== 'number') { teardownNet('GAME VERSIONS DIFFER — RELOAD THE PAGE ON BOTH PHONES'); break; }
+      fx.init();
+      if (d.mode === 'autochess') {
+        selectedMode = 'autochess';
+        enterAutochess({ isHost: false, seed: d.seed });
+        break;
+      }
       selA = d.a;
       selB = d.b;
-      fx.init();
       startMatch(d.a, d.b, d.seed);
       break;
     case 'rematch':
@@ -1276,6 +1286,11 @@ function onNetMsg(d) {
 function maybeHostStart() {
   if (net?.isHost && netConnected() && readyA && readyB) {
     const seed = (Math.random() * 0x7fffffff) | 0;
+    if (selectedMode === 'autochess') {
+      net.send({ t: 'start', mode: 'autochess', seed });
+      enterAutochess({ isHost: true, seed });
+      return;
+    }
     net.send({ t: 'start', a: selA, b: selB, seed });
     startMatch(selA, selB, seed);
   }
@@ -1298,7 +1313,10 @@ function teardownNet(message = null) {
 function updateNetUi() {
   $('#netIdle').classList.toggle('hidden', !!net);
   $('#netLive').classList.toggle('hidden', !net);
-  $('#modeSeg').classList.toggle('hidden', !!net); // online is always auto-sim
+  // autochess supports online play, so the selector stays available; only
+  // TAKE CONTROL is still solo-only and is disabled below
+  $('#modeSeg').classList.remove('hidden');
+  $('.modeBtn[data-mode="control"]').disabled = !!net;
   const fight = $('#menuFightBtn');
   if (net) {
     $('#netStatus').innerHTML = netConnected()
@@ -1416,7 +1434,7 @@ $('#menuFightBtn').addEventListener('click', () => {
   // autochess is strictly solo, like control mode — the `net` branch above
   // already returned, so online lobbies can never reach it
   if (selectedMode === 'autochess') {
-    enterAutochess();
+    enterAutochess(null);
     return;
   }
   startMatch(selA, selB);
@@ -1475,7 +1493,7 @@ document.querySelectorAll('.modeBtn').forEach(b =>
 );
 
 // ---------- autochess entry / exit ----------
-async function enterAutochess() {
+async function enterAutochess(online = null) {
   // Never construct the mode before the fighter models exist: it caches the
   // instance, so an early entry would leave `assets` null forever and every
   // unit purchase would throw.
@@ -1522,7 +1540,14 @@ async function enterAutochess() {
 
   userYaw = 0;
   userY = 0;
-  tftMode.start();
+  // online: hand the mode a transport. The host also opens the match, which is
+  // the only message needed to agree a seed — every round after that is driven
+  // by the board exchange itself.
+  tftMode.start(online ? { isHost: online.isHost, send: msg => net?.send(msg) } : null);
+  if (online) {
+    if (online.isHost) tftMode.netMatch.start(online.seed);
+    else { tftMode.netMatch.seed = online.seed | 0; tftMode.netMatch.started = true; tftMode.netMatch.round = 1; }
+  }
   window.__tft = tftMode;
 }
 

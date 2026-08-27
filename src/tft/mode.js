@@ -10,7 +10,9 @@ import { Board3D } from './board3d.js';
 import { UnitView } from './unitview.js';
 import { UNIT_BY_ID, UNITS, sellValue, statsFor, abilityText } from './units.js';
 import { AiOpponent } from './ai.js';
+import { NetMatch, canonicalUnits } from './netmatch.js';
 import { Combat, CombatUnit, setCombatRng, ROUND_TIME, playerDamage } from './combat.js';
+import { seededRng } from '../fight.js';
 import {
   Pool, Roster, Economy, setShopRng,
   SHOP_SIZE, REROLL_COST, XP_COST, XP_PER_ROUND, BENCH_SLOTS, boardCapacity,
@@ -51,14 +53,35 @@ export class AutochessMode {
   }
 
   // ---- lifecycle ----
-  start() {
+  // `net` is { isHost, send } when playing online; omit it for solo vs the AI.
+  start(net = null) {
     setCombatRng(null);
     setShopRng(null);
+
+    // Canonical coordinates: the HOST always owns rows 4-7 and the guest rows
+    // 0-3, on both peers. The guest's SCREEN is rotated instead of its data, so
+    // there is no mirroring maths that could drift between the two sides.
+    this.net = net;
+    this.isHost = !net || net.isHost;
+    this.myTeam = this.isHost ? 'player' : 'enemy';
+    this.oppTeam = this.isHost ? 'enemy' : 'player';
+    this.oppHp = 100;
+    this.myRows = this.isHost ? [4, 5, 6, 7] : [0, 1, 2, 3];
+    this.board.setFlipped(!this.isHost);
+    this.netMatch = net ? new NetMatch({
+      isHost: net.isHost,
+      send: net.send,
+      hooks: {
+        onResolve: (round, hostBoard, guestBoard, seed) => this._runNetRound(round, hostBoard, guestBoard, seed),
+        onPeerLeft: () => { this.ui?.onToast('Opponent left'); this.phase = PHASE.OVER; this.ui?.onGameOver(this.snapshot()); },
+      },
+    }) : null;
+    this.waitingForPeer = false;
     this.pool = new Pool();
     this.roster = new Roster(this.pool);
     // shares the pool: the AI's purchases really do remove copies the player
     // could have bought, which is what makes a finite pool mean anything
-    this.ai = new AiOpponent(this.pool);
+    this.ai = net ? null : new AiOpponent(this.pool);
     this.econ = new Economy();
     this.econ.level = 2;      // TFT hands you a unit and a level before 1-1
     this.econ.gold = 3;
@@ -89,6 +112,75 @@ export class AutochessMode {
     this.combat = null;
   }
 
+  isMyHalf(row) { return this.myRows ? this.myRows.includes(row) : Hex.isPlayerHalf(row); }
+
+  // My board in the wire format the peer expects.
+  myBoardSpecs() {
+    return this.roster.board.map(e => ({ id: e.unitId, star: e.star, cell: e.cell }));
+  }
+
+  // Online: hand the board over and wait. The exchange is the barrier that
+  // keeps both peers in lockstep, so there is no clock message to drift.
+  submitNetBoard() {
+    if (!this.netMatch) return false;
+    const round = this.roundIndex;
+    if (!this.roster.board.length) {
+      this.ui?.onToast('Place at least one fighter on the board');
+      return false;
+    }
+    if (this.netMatch.submitBoard(round, this.myBoardSpecs())) {
+      this.waitingForPeer = true;
+      this.phase = PHASE.COMBAT;   // locked in; no more shopping
+      this.timer = ROUND_TIME;
+      this.ui?.onToast('Waiting for your opponent…');
+      this.ui?.onState(this.snapshot());
+      return true;
+    }
+    return false;
+  }
+
+  // Both peers land here with identical arguments and run the identical fight.
+  _runNetRound(round, hostBoard, guestBoard, seed) {
+    this.waitingForPeer = false;
+    setCombatRng(seededRng(seed));
+    this.phase = PHASE.COMBAT;
+    this.timer = ROUND_TIME;
+
+    const mk = (spec, team) => {
+      const u = new CombatUnit(UNIT_BY_ID[spec.id], spec.star, team,
+        Hex.idCol(spec.cell), Hex.idRow(spec.cell));
+      u.spec = spec;
+      return u;
+    };
+    const units = canonicalUnits(hostBoard, guestBoard, mk);
+
+    // reuse my own views where the entry still exists; spawn throwaways for the
+    // opponent's board exactly as the solo mode does for the AI
+    for (const v of this.enemyViews) v.dispose();
+    this.enemyViews = [];
+    for (const cu of units) {
+      const mine = cu.team === this.myTeam;
+      if (mine) {
+        const e = this.roster.board.find(x => x.cell === cu.spec.cell && x.unitId === cu.spec.id);
+        cu.view = e ? this.views.get(e.uid) : null;
+      }
+      if (!cu.view) {
+        const v = this.makeView(cu.unit, cu.star, mine ? 'player' : 'enemy');
+        v.setPosition(cu.x, cu.z);
+        v.faceToward(0, mine ? -6 : 6, 0, true);
+        cu.view = v;
+        this.enemyViews.push(v);
+      }
+      cu.view.setBarsVisible(true);
+      cu.view.playIdle();
+    }
+
+    this.combat = new Combat(units, this.combatHooks());
+    this.board.setGridMode(false);
+    this.fx?.startMusic?.();
+    this.ui?.onState(this.snapshot());
+  }
+
   // ---- phases ----
   beginPlanning() {
     this.phase = PHASE.PLANNING;
@@ -97,8 +189,8 @@ export class AutochessMode {
     for (const v of this.enemyViews) v.dispose();
     this.enemyViews = [];
 
-    // the AI shops and re-forms its board for the round before the player acts
-    this.ai.takeTurn(this.roundIndex);
+    // solo only: the AI shops and re-forms its board before the player acts
+    this.ai?.takeTurn(this.roundIndex);
 
     this.econ.grantXp(XP_PER_ROUND);
     this.syncViews();
@@ -108,7 +200,7 @@ export class AutochessMode {
       if (!v) continue;
       v.showPlanningPlate();
       v.playSignature();
-      v.faceToward(0, -6, 0, true); // square up toward the enemy half
+      v.faceToward(0, this.isHost ? -6 : 6, 0, true); // square up at the opponent
     }
     this.refreshHighlights();
     this.ui?.onState(this.snapshot());
@@ -116,6 +208,7 @@ export class AutochessMode {
 
   beginCombat() {
     if (this.phase !== PHASE.PLANNING) return;
+    if (this.netMatch) return void this.submitNetBoard();
     const placed = this.roster.board;
     if (!placed.length) {
       this.ui?.onToast('Place at least one fighter on the board');
@@ -164,14 +257,13 @@ export class AutochessMode {
     // banks a streak. Treating `!won` as "the AI won" charged the player a loss
     // AND paid the AI a win off the same result.
     const draw = winner === null;
-    const won = winner === 'player';
+    const won = winner === this.myTeam;
     if (!draw) {
       this.econ.recordResult(won);
-      this.ai.settle(!won); // the AI banks its own income and streak too
+      this.ai?.settle(!won); // the AI banks its own income and streak too
     } else {
       this.econ.streak = 0;
-      this.ai.econ.streak = 0;
-      this.ai.econ.payout();
+      if (this.ai) { this.ai.econ.streak = 0; this.ai.econ.payout(); }
     }
 
     // Damage is symmetric: whoever loses the round takes it, from the winner's
@@ -179,24 +271,25 @@ export class AutochessMode {
     // mode had no win condition at all — you could only ever lose.
     let dmg = 0, aiDmg = 0;
     if (!draw) {
-      const survivors = this.combat ? this.combat.living(won ? 'player' : 'enemy') : [];
+      const survivors = this.combat ? this.combat.living(won ? this.myTeam : this.oppTeam) : [];
       const hit = playerDamage(this.stage, survivors);
       if (won) {
         aiDmg = hit;
-        this.ai.econ.hp = Math.max(0, this.ai.econ.hp - hit);
+        this.oppHp = Math.max(0, this.oppHp - hit);
+        if (this.ai) this.ai.econ.hp = this.oppHp;
       } else {
         dmg = hit;
         this.econ.hp = Math.max(0, this.econ.hp - hit);
       }
     }
     const pay = this.econ.payout();
-    this.lastResult = { won, dmg, aiDmg, pay, draw, aiHp: this.ai.econ.hp };
+    this.lastResult = { won, dmg, aiDmg, pay, draw, aiHp: this.oppHp };
     this.ui?.onRoundEnd(this.lastResult);
     this.fx?.stopMusic?.();
     this.fx?.bell?.();
-    if (this.econ.hp <= 0 || this.ai.econ.hp <= 0) {
+    if (this.econ.hp <= 0 || this.oppHp <= 0) {
       this.phase = PHASE.OVER;
-      this.victory = this.ai.econ.hp <= 0 && this.econ.hp > 0;
+      this.victory = this.oppHp <= 0 && this.econ.hp > 0;
       this.ui?.onGameOver(this.snapshot());
     }
     this.ui?.onState(this.snapshot());
@@ -372,7 +465,7 @@ export class AutochessMode {
     if (this.phase !== PHASE.PLANNING || !entry) return false;
     if (cell !== null) {
       const row = Hex.idRow(cell);
-      if (!Hex.isPlayerHalf(row)) { this.ui?.onToast('You can only place on your half'); return false; }
+      if (!this.isMyHalf(row)) { this.ui?.onToast('You can only place on your half'); return false; }
       const occupant = this.roster.at(cell);
       if (occupant && occupant !== entry) {
         // swap rather than reject — repositioning is constant in TFT
@@ -419,12 +512,12 @@ export class AutochessMode {
     if (this.phase === PHASE.PLANNING) {
       if (this.selected) {
         for (const { col, row } of Hex.allCells()) {
-          if (!Hex.isPlayerHalf(row)) continue;
+          if (!this.isMyHalf(row)) continue;
           const id = Hex.cellId(col, row);
           h.set(id, this.roster.at(id) ? 'occupied' : 'valid');
         }
       }
-      if (this._hover != null && Hex.isPlayerHalf(Hex.idRow(this._hover))) h.set(this._hover, 'hover');
+      if (this._hover != null && this.isMyHalf(Hex.idRow(this._hover))) h.set(this._hover, 'hover');
     }
     this.highlights = h;
     this.board.setHighlights(h);
@@ -484,8 +577,10 @@ export class AutochessMode {
       selected: this.selected,
       detail: this.detailFor(this.selected),
       enemy: this.enemyRoster(),
-      aiHp: this.ai?.econ.hp ?? 0,
+      aiHp: this.oppHp ?? 0,
       aiLevel: this.ai?.econ.level ?? 0,
+      online: !!this.netMatch,
+      waitingForPeer: !!this.waitingForPeer,
       aiGold: this.ai?.econ.gold ?? 0,
       victory: !!this.victory,
     };
@@ -506,7 +601,9 @@ export class AutochessMode {
           alive: u.alive,
         }));
     }
-    if (this.phase !== PHASE.PLANNING) return [];
+    // Online there is nothing to scout: the opponent is still choosing, and
+    // showing a half-built board would be worse than showing none.
+    if (this.netMatch || this.phase !== PHASE.PLANNING) return [];
     return this.previewEnemy().map(s => {
       const unit = UNIT_BY_ID[s.id];
       const st = statsFor(unit, s.star);
