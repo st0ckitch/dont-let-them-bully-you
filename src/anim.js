@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { GLTFLoader } from '../vendor/GLTFLoader.js?v=202608271851';
-import { MeshoptDecoder } from '../vendor/meshopt_decoder.module.js?v=202608271851';
+import { GLTFLoader } from '../vendor/GLTFLoader.js?v=202608271907';
+import { MeshoptDecoder } from '../vendor/meshopt_decoder.module.js?v=202608271907';
 
 // Animation-only GLBs (mesh/textures stripped offline). All rigs share the
 // same 24-bone skeleton NAMES, but bind-pose orientations differ between the

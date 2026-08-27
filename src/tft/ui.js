@@ -3,9 +3,9 @@
 // Built imperatively against a container the mode owns, so none of it exists
 // (or costs anything) while the game is in auto-sim or control mode.
 
-import { TIER_COLOR, sellValue, UNIT_BY_ID } from './units.js?v=202608271851';
-import { PHASE } from './mode.js?v=202608271851';
-import { REROLL_COST, XP_COST, XP_PER_BUY, BENCH_SLOTS } from './shop.js?v=202608271851';
+import { TIER_COLOR, sellValue, UNIT_BY_ID } from './units.js?v=202608271907';
+import { PHASE } from './mode.js?v=202608271907';
+import { REROLL_COST, XP_COST, XP_PER_BUY, BENCH_SLOTS } from './shop.js?v=202608271907';
 
 const el = (tag, cls, html) => {
   const e = document.createElement(tag);
@@ -15,6 +15,41 @@ const el = (tag, cls, html) => {
 };
 
 const STAR = '★';
+
+// Activate on touch via pointerup, on mouse via click. iOS Safari has a
+// compatibility behaviour that exists in NO other engine (it lives in the OS
+// touch layer, so even desktop-WebKit tests pass): when a tap hits an element
+// whose pointerover/mouseover handler visibly mutates the page, the tap is
+// treated as a HOVER — the hover fires and the click is swallowed; only a
+// second tap clicks. Our bench slots and shop cards show a preview panel on
+// pointerover, which is exactly that pattern, so on iPhones one tap "did
+// nothing". pointerup is always delivered, so touch runs on it instead, with
+// a small movement guard so a drag is not a tap; the click path stays for
+// mice, deduped so desktop browsers (which fire both) cannot double-activate.
+// The touch-dedupe timestamp is SHARED across all elements, not stored per
+// element: activating on pointerup usually re-renders the UI, so by the time
+// the browser dispatches the trailing click it hit-tests onto a NEWLY-BUILT
+// element whose own timer would know nothing about the tap — and the action
+// would run twice. (Observed: one tap on a bench slot selected and instantly
+// de-selected.) One shared clock kills the trailing click no matter which
+// element it lands on.
+let lastTouchActivation = 0;
+const tapify = (el, fn) => {
+  let sx = 0, sy = 0;
+  el.addEventListener('pointerdown', e => {
+    if (e.pointerType !== 'mouse') { sx = e.clientX; sy = e.clientY; }
+  });
+  el.addEventListener('pointerup', e => {
+    if (e.pointerType === 'mouse') return;
+    if (Math.hypot(e.clientX - sx, e.clientY - sy) > 14) return;
+    lastTouchActivation = performance.now();
+    fn(e);
+  });
+  el.addEventListener('click', e => {
+    if (performance.now() - lastTouchActivation < 700) return; // tap already handled
+    fn(e);
+  });
+};
 
 export class AutochessUI {
   constructor(root, mode, { portraits = {} } = {}) {
@@ -49,7 +84,7 @@ export class AutochessUI {
 
     // ---- inspector: stats, ability, sell ----
     this.detail = el('div', 'acDetail hidden');
-    this.detail.addEventListener('click', e => {
+    tapify(this.detail, e => {
       if (!e.target.closest('[data-sell]')) {
         // on phones the panel is a compact bar; tapping it opens the full card
         this._detOpen = !this._detOpen;
@@ -89,7 +124,7 @@ export class AutochessUI {
     this.cards = el('div', 'acCards');
     this.cardsWrap = el('div', 'acCardsWrap');
     this.freezeBtn = el('button', 'acFreeze');
-    this.freezeBtn.addEventListener('click', () => this.mode.toggleFreeze());
+    tapify(this.freezeBtn, () => this.mode.toggleFreeze());
     // Freeze and START ROUND share a row inside the bottom cluster. On desktop
     // .acReady is absolutely positioned and so leaves this flow untouched; on a
     // phone it stays in the row, because floating it over the board covered the
@@ -113,15 +148,16 @@ export class AutochessUI {
     this.actions.append(this.freezeBtn, this.readyBtn);
     this.root.append(this.top, this.rail, this.foe, this.floatLayer, this.bottom, this.toast, this.banner);
 
-    this.xpBtn.addEventListener('click', () => this.mode.buyXp());
-    this.rollBtn.addEventListener('click', () => this.mode.reroll());
-    this.readyBtn.addEventListener('click', () => this.mode.beginCombat());
+    tapify(this.xpBtn, () => this.mode.buyXp());
+    tapify(this.rollBtn, () => this.mode.reroll());
+    tapify(this.readyBtn, () => this.mode.beginCombat());
 
     // Hover is delegated to the CONTAINERS, which are never rebuilt. Binding to
     // the cards themselves stranded the panel open: onState() re-renders the
     // shop, so buying a card destroyed the element the pointer was over and its
     // pointerleave never fired.
     this.cards.addEventListener('pointerover', e => {
+      if (e.pointerType && e.pointerType !== 'mouse') return;
       const card = e.target.closest('.acCard');
       const id = card?.dataset.shopId;
       if (!id) return this._scheduleHide(); // empty slot (already bought)
@@ -131,6 +167,7 @@ export class AutochessUI {
     this.cards.addEventListener('pointerleave', () => this._scheduleHide());
 
     this.benchRow.addEventListener('pointerover', e => {
+      if (e.pointerType && e.pointerType !== 'mouse') return;
       const slot = e.target.closest('.acBenchSlot');
       const uid = slot?.dataset.benchUid;
       if (!uid) return this._scheduleHide();
@@ -244,7 +281,7 @@ export class AutochessUI {
         <div class="acCardFoot"><span class="acCardAbil">${u.ability.name}</span><b>${u.cost}g</b></div>`;
       card.dataset.shopId = c.id;
       card.dataset.shopIdx = i;
-      card.addEventListener('click', () => this.mode.buy(i));
+      tapify(card, () => this.mode.buy(i));
       this.cards.appendChild(card);
     });
   }
@@ -379,7 +416,7 @@ export class AutochessUI {
         slot.innerHTML = `${art}<em class="acStars s${b.star}">${STAR.repeat(b.star)}</em>`;
         slot.title = `${b.unit.name} — ${STAR.repeat(b.star)} — sell for ${sellValue(b.unit.cost, b.star)}g`;
         slot.dataset.benchUid = b.entry.uid;
-        slot.addEventListener('click', () => this.mode.select(b.entry));
+        tapify(slot, () => this.mode.select(b.entry));
       }
       this.benchRow.appendChild(slot);
     }

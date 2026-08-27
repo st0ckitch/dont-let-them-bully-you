@@ -5,7 +5,7 @@
 // per-level odds table, and three copies of a champion merging into the next
 // star level (cascading, so nine 1-stars become a 3-star).
 
-import { UNITS, UNITS_BY_COST, UNIT_BY_ID, POOL_COPIES, sellValue } from './units.js?v=202608271851';
+import { UNITS, UNITS_BY_COST, UNIT_BY_ID, POOL_COPIES, sellValue } from './units.js?v=202608271907';
 
 let rng = Math.random;
 export function setShopRng(fn) { rng = fn || Math.random; }

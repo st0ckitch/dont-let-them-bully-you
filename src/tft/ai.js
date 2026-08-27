@@ -11,9 +11,9 @@
 // merging, star levels that appeared by dice roll, and occasionally a single
 // lonely fighter. Every one of those is a symptom of having no roster.
 
-import { UNIT_BY_ID, UNITS, sellValue } from './units.js?v=202608271851';
-import { Pool, Roster, Economy, SHOP_SIZE, REROLL_COST, XP_COST, XP_PER_ROUND, BENCH_SLOTS, boardCapacity } from './shop.js?v=202608271851';
-import * as Hex from './hex.js?v=202608271851';
+import { UNIT_BY_ID, UNITS, sellValue } from './units.js?v=202608271907';
+import { Pool, Roster, Economy, SHOP_SIZE, REROLL_COST, XP_COST, XP_PER_ROUND, BENCH_SLOTS, boardCapacity } from './shop.js?v=202608271907';
+import * as Hex from './hex.js?v=202608271907';
 
 let rng = Math.random;
 export function setAiRng(fn) { rng = fn || Math.random; }

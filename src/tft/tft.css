@@ -17,6 +17,21 @@
 #tftUi.hidden { display: none; }
 #tftUi button { pointer-events: auto; font-family: inherit; cursor: pointer; }
 
+/* Touch hardening. `manipulation` removes any double-tap-zoom tap delay on the
+   controls; the images inside cards and slots are made hit-transparent so a
+   tap targets the interactive element itself, and so iOS long-press cannot
+   open its save-image sheet mid-game. */
+#tftUi button, .acCard, .acBenchSlot, .acDetail, .acBench, .acCards {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.acCard img, .acBenchSlot img, .acDetail img, .acFoe img {
+  pointer-events: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 /* The octagon-mode broadcast chrome is laid out by ID selectors in style.css,
    which outrank a `.hidden` class — so autochess suppresses it from the body
    class instead of fighting specificity element by element. */

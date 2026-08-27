@@ -5,18 +5,18 @@
 // the sim resolves) -> RESOLVE (damage, gold, streak) -> next round.
 
 import * as THREE from 'three';
-import * as Hex from './hex.js?v=202608271851';
-import { Board3D } from './board3d.js?v=202608271851';
-import { UnitView } from './unitview.js?v=202608271851';
-import { UNIT_BY_ID, UNITS, sellValue, statsFor, abilityText } from './units.js?v=202608271851';
-import { AiOpponent } from './ai.js?v=202608271851';
-import { NetMatch, canonicalUnits } from './netmatch.js?v=202608271851';
-import { Combat, CombatUnit, setCombatRng, ROUND_TIME, playerDamage } from './combat.js?v=202608271851';
-import { seededRng } from '../fight.js?v=202608271851';
+import * as Hex from './hex.js?v=202608271907';
+import { Board3D } from './board3d.js?v=202608271907';
+import { UnitView } from './unitview.js?v=202608271907';
+import { UNIT_BY_ID, UNITS, sellValue, statsFor, abilityText } from './units.js?v=202608271907';
+import { AiOpponent } from './ai.js?v=202608271907';
+import { NetMatch, canonicalUnits } from './netmatch.js?v=202608271907';
+import { Combat, CombatUnit, setCombatRng, ROUND_TIME, playerDamage } from './combat.js?v=202608271907';
+import { seededRng } from '../fight.js?v=202608271907';
 import {
   Pool, Roster, Economy, setShopRng,
   SHOP_SIZE, REROLL_COST, XP_COST, XP_PER_ROUND, BENCH_SLOTS, boardCapacity,
-} from './shop.js?v=202608271851';
+} from './shop.js?v=202608271907';
 
 export const PHASE = { PLANNING: 'planning', COMBAT: 'combat', RESOLVE: 'resolve', OVER: 'over' };
 
