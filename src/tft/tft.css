@@ -498,6 +498,11 @@ body.tftMode #gameMicBtn {
 .acCardFoot b { font-size: 13px; color: var(--gold); }
 
 /* ---------- ready button ---------- */
+.acActions { display: flex; gap: 6px; align-items: stretch; }
+.acActions .acFreeze { flex: 1 1 auto; }
+
+/* desktop keeps it floating clear of the shop; `position: absolute` takes it
+   out of .acActions' flow so the freeze bar still spans the full width */
 .acReady {
   position: absolute;
   right: 18px;
@@ -594,13 +599,13 @@ body.tftMode #gameMicBtn {
    becomes a horizontal status strip, the opponent collapses to a compact card,
    and the shop stretches edge to edge with five slimmed cards. */
 @media (max-width: 700px) {
-  .acTop { top: 46px; padding: 4px 14px 6px; min-width: 150px; }
+  .acTop { top: 44px; padding: 3px 14px 5px; min-width: 132px; gap: 2px; }
   .acStage { font-size: 20px; }
   .acPhase { font-size: 9px; }
 
   /* status rail -> horizontal strip pinned under the nav */
   .acRail {
-    left: 6px; right: 6px; top: 78px;
+    left: 6px; right: 6px; top: 102px;
     width: auto; max-height: none;
     flex-direction: row;
     align-items: stretch;
@@ -621,7 +626,7 @@ body.tftMode #gameMicBtn {
   .acStreak { display: none; }
 
   /* opponent: compact card under the strip, on the right */
-  .acFoe { top: 140px; right: 6px; width: 130px; padding: 5px 6px 6px; }
+  .acFoe { top: 162px; right: 6px; width: 130px; padding: 5px 6px 6px; }
   .acFoeHead span { font-size: 8px; letter-spacing: 1px; }
   .acFoeHead b { font-size: 15px; }
   .acFoeSub { font-size: 7px; margin-bottom: 4px; }
@@ -632,18 +637,54 @@ body.tftMode #gameMicBtn {
   .acFoeHp { font-size: 8px; }
   .acFoeHint { display: none; }
 
-  /* inspector becomes a bottom sheet so it never fights the rail for space */
+  /* Inspector: a COMPACT BAR in the gap between the board and the bench, not a
+     sheet over the board. As a sheet it covered the whole player half and ate
+     every tap meant for a hex — elementsFromPoint returned .acDetail, never the
+     canvas — so placing a unit on a phone was simply impossible. Tap the bar to
+     expand it into the full card when you actually want the stats. */
   .acRail > .acDetail {
     position: fixed;
-    left: 6px; right: 6px;
-    bottom: 212px;
+    left: 5px; right: 5px;
+    bottom: 214px;
     width: auto;
     z-index: 6;
-    padding: 8px 10px;
+    padding: 5px 7px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    cursor: pointer;
   }
-  .acDetBlurb { display: none; }
-  .acDetStats { grid-template-columns: 1fr 1fr; gap: 0 8px; }
-  .acDetName { font-size: 15px; }
+  .acDetBlurb, .acDetStats, .acDetAbil { display: none; }
+  .acDetHead { flex: 1 1 auto; min-width: 0; gap: 7px; }
+  .acDetArt { width: 30px; height: 30px; border-radius: 5px; }
+  .acDetName { font-size: 13px; }
+  .acDetNick { display: none; }
+  .acDetTags { margin-top: 1px; }
+  .acDetTags span { font-size: 8px; }
+  .acSell { margin-top: 0; width: auto; flex: 0 0 auto; padding: 6px 9px; font-size: 11px; }
+  .acSell em { display: none; }
+  .acDetHint { margin-top: 0; font-size: 8px; flex: 0 0 auto; }
+  .acDetMore {
+    flex: 0 0 auto;
+    font-size: 14px;
+    opacity: 0.45;
+    padding: 0 2px;
+    transform: rotate(0deg);
+    transition: transform 0.15s;
+  }
+
+  /* expanded: the full card, deliberately over the board because the player
+     asked for it and one more tap puts it away */
+  .acRail > .acDetail.acDetOpen {
+    display: block;
+    bottom: 214px;
+    padding: 9px 11px 10px;
+  }
+  .acDetOpen .acDetStats { display: grid; grid-template-columns: 1fr 1fr; gap: 0 8px; }
+  .acDetOpen .acDetAbil { display: block; }
+  .acDetOpen .acDetNick { display: block; }
+  .acDetOpen .acSell { width: 100%; margin-top: 8px; }
+  .acDetOpen .acDetMore { transform: rotate(180deg); }
 
   /* bottom cluster: one full-width column */
   .acBottom {
@@ -677,7 +718,7 @@ body.tftMode #gameMicBtn {
   .acFreeze b { font-size: 10px; }
   .acFreeze span { display: none; }
 
-  .acReady { right: 6px; bottom: 212px; padding: 9px 14px; font-size: 12px; letter-spacing: 1px; }
+  .acReady { position: static; flex: 0 0 auto; padding: 7px 16px; font-size: 12px; letter-spacing: 1px; border-radius: 7px; }
 
   .acBannerMain { font-size: 30px; }
   .acBannerSub { font-size: 10px; }
@@ -691,5 +732,5 @@ body.tftMode #gameMicBtn {
   .acTop { top: 40px; }
   .acRail { top: 52px; }
   .acFoe { top: 108px; }
-  .acRail > .acDetail, .acReady { bottom: 170px; }
+  .acRail > .acDetail { bottom: 170px; }
 }

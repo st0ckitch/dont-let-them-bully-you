@@ -49,6 +49,12 @@ export class AutochessUI {
     // ---- inspector: stats, ability, sell ----
     this.detail = el('div', 'acDetail hidden');
     this.detail.addEventListener('click', e => {
+      if (!e.target.closest('[data-sell]')) {
+        // on phones the panel is a compact bar; tapping it opens the full card
+        this._detOpen = !this._detOpen;
+        this.detail.classList.toggle('acDetOpen', this._detOpen);
+        return;
+      }
       if (e.target.closest('[data-sell]')) {
         const entry = this._hoverDetail?.entry || this.mode.selected;
         if (!entry) return;
@@ -83,7 +89,12 @@ export class AutochessUI {
     this.cardsWrap = el('div', 'acCardsWrap');
     this.freezeBtn = el('button', 'acFreeze');
     this.freezeBtn.addEventListener('click', () => this.mode.toggleFreeze());
-    this.cardsWrap.append(this.benchRow, this.cards, this.freezeBtn);
+    // Freeze and START ROUND share a row inside the bottom cluster. On desktop
+    // .acReady is absolutely positioned and so leaves this flow untouched; on a
+    // phone it stays in the row, because floating it over the board covered the
+    // two bottom-right hexes and made them impossible to place on.
+    this.actions = el('div', 'acActions');
+    this.cardsWrap.append(this.benchRow, this.cards, this.actions);
     this.bottom.append(this.shopSide, this.cardsWrap);
 
     // ---- opponent scout panel ----
@@ -98,7 +109,8 @@ export class AutochessUI {
     // stats boxes — an absolute offset silently collides the moment the rail
     // gains a row (it did, when board capacity got its own readout)
     this.rail.append(this.detail);
-    this.root.append(this.top, this.rail, this.foe, this.floatLayer, this.bottom, this.readyBtn, this.toast, this.banner);
+    this.actions.append(this.freezeBtn, this.readyBtn);
+    this.root.append(this.top, this.rail, this.foe, this.floatLayer, this.bottom, this.toast, this.banner);
 
     this.xpBtn.addEventListener('click', () => this.mode.buyXp());
     this.rollBtn.addEventListener('click', () => this.mode.reroll());
@@ -331,7 +343,10 @@ export class AutochessUI {
       </div>
       ${d.sellFor != null
         ? `<button class="acSell" data-sell>Sell ${u.short} <b>+${d.sellFor}g</b><em>E</em></button>`
-        : '<div class="acDetHint">Click to buy</div>'}`;
+        : '<div class="acDetHint">Click to buy</div>'}
+      <span class="acDetMore" aria-hidden="true">&#9662;</span>`;
+    // preserve the expanded state across re-renders
+    this.detail.classList.toggle('acDetOpen', !!this._detOpen);
   }
 
   _renderBench(s) {

@@ -1437,6 +1437,13 @@ document.querySelectorAll('.modeBtn').forEach(b =>
 
 // ---------- autochess entry / exit ----------
 async function enterAutochess() {
+  // Never construct the mode before the fighter models exist: it caches the
+  // instance, so an early entry would leave `assets` null forever and every
+  // unit purchase would throw.
+  if (!loadedAssets) {
+    loadText.textContent = 'Still loading fighters…';
+    return;
+  }
   if (!tftMode) {
     tftMode = new AutochessMode({ scene, camera, assets: loadedAssets, fx, ui: null });
     loadText.textContent = 'Loading the autochess cage…';
@@ -1704,6 +1711,11 @@ canvas.addEventListener('pointerup', e => {
 });
 
 renderer.setAnimationLoop(() => {
+  // Cheap guard against a canvas that never got sized. ResizeObserver does not
+  // reliably fire for a 0 -> N viewport transition (a tab that starts hidden,
+  // a restored session), and a NaN aspect silently breaks hex picking.
+  if (window.innerWidth !== lastViewW || window.innerHeight !== lastViewH) applyViewportSize();
+
   const rawDt = clock.getDelta();
   const dt = Math.min(rawDt, 0.05);
   const t = clock.elapsedTime;
@@ -1817,9 +1829,34 @@ renderer.setAnimationLoop(() => {
   renderer.render(scene, camera);
 });
 
-window.addEventListener('resize', () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
+let lastViewW = -1, lastViewH = -1;
+
+function applyViewportSize() {
+  // Guard against a zero-sized viewport. A canvas that initialises at 0x0 gives
+  // camera.aspect = NaN, which poisons the projection matrix — and because hex
+  // picking raycasts through that camera, every tap resolves to nothing. The
+  // board renders fine once a frame lands, so the failure looks like "taps do
+  // nothing" rather than anything visibly broken.
+  const w = window.innerWidth || document.documentElement.clientWidth || 1;
+  const h = window.innerHeight || document.documentElement.clientHeight || 1;
+  if (w === lastViewW && h === lastViewH) return;
+  lastViewW = w;
+  lastViewH = h;
+  camera.aspect = w / h;
   camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setSize(w, h);
+}
+
+window.addEventListener('resize', () => {
+  applyViewportSize();
   if (menuOpen) updateMenuPreview(); // re-space the two-shot for the new aspect
 });
+
+// A resize event never fires for a tab that simply started at zero size (a
+// background tab, a restored session, some mobile browsers mid-load), so watch
+// the element itself as well.
+if (typeof ResizeObserver === 'function') {
+  new ResizeObserver(() => applyViewportSize()).observe(document.documentElement);
+}
+window.addEventListener('orientationchange', () => setTimeout(applyViewportSize, 50));
+applyViewportSize();

@@ -385,6 +385,10 @@ export class AutochessMode {
       }
       entry.cell = null;
     }
+    // Drop the unit once it lands. Holding on to it meant the NEXT tap on any
+    // hex moved the same fighter again instead of picking up the one you
+    // tapped, so selecting a different unit took two taps.
+    this.selected = null;
     this.syncViews();
     this.refreshHighlights();
     this.ui?.onState(this.snapshot());
