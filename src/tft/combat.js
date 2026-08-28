@@ -10,8 +10,8 @@
 // mana from attacking and from taking damage, and cast a signature ability the
 // moment mana fills.
 
-import * as Hex from './hex.js?v=202608281039';
-import { statsFor, ATTACK_IMPACT_AT } from './units.js?v=202608281039';
+import * as Hex from './hex.js?v=202608281148';
+import { statsFor, ATTACK_IMPACT_AT } from './units.js?v=202608281148';
 
 let rng = Math.random;
 export function setCombatRng(fn) { rng = fn || Math.random; }
@@ -378,8 +378,14 @@ export class Combat {
 // Damage dealt to the losing player: a flat amount for how deep the game is,
 // plus a per-survivor toll that scales with star level. Mirrors TFT, where
 // losing to a wide board hurts far more than losing to a lone carry.
-const STAGE_DAMAGE = [0, 0, 2, 5, 8, 11, 15, 20, 26];
-const SURVIVOR_DAMAGE = { 1: 2, 2: 4, 3: 6 };
+// Softer than before on both axes. The old curve (base up to 26, survivors
+// worth 2/4/6 by star) ended the average game around round 14 — stage 3 — so
+// the 4-and-5-cost endgame the shop odds gate behind level 7+ effectively did
+// not exist: nobody ever met an Ilia. A stage-3 loss now costs ~12 HP instead
+// of ~20, which stretches the arc into the levels where the premium roster
+// actually comes online.
+const STAGE_DAMAGE = [0, 0, 2, 4, 6, 8, 11, 14, 17];
+const SURVIVOR_DAMAGE = { 1: 1, 2: 2, 3: 3 };
 
 export function playerDamage(stage, survivors) {
   const base = STAGE_DAMAGE[Math.min(stage, STAGE_DAMAGE.length - 1)];

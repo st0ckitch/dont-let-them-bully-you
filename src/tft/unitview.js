@@ -8,8 +8,8 @@
 // skeleton.
 
 import * as THREE from 'three';
-import { clone as cloneSkinned } from '../../vendor/utils/SkeletonUtils.js?v=202608281039';
-import { Fighter3D } from '../fighter3d.js?v=202608281039';
+import { clone as cloneSkinned } from '../../vendor/utils/SkeletonUtils.js?v=202608281148';
+import { Fighter3D } from '../fighter3d.js?v=202608281148';
 
 
 // Fighters are authored 1.8m tall against a 1.0-unit hex width. That ratio is

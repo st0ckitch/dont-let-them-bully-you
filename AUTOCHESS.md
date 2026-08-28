@@ -65,9 +65,9 @@ Reroll 2g, XP 4g for 4xp, 2xp free each round. Board slots = your level.
 | 4 | 55 | 30 | 15 | 0 | 0 |
 | 5 | 45 | 33 | 20 | 2 | 0 |
 | 6 | 30 | 40 | 25 | 5 | 0 |
-| 7 | 19 | 30 | 35 | 15 | 1 |
-| 8 | 15 | 20 | 32 | 30 | 3 |
-| 9 | 10 | 17 | 25 | 33 | 15 |
+| 7 | 19 | 30 | 33 | 14 | 4 |
+| 8 | 14 | 20 | 30 | 29 | 7 |
+| 9 | 10 | 15 | 23 | 33 | 19 |
 
 **Upgrades** — 3 copies at the same star merge into the next star, cascading
 (nine 1-stars become a 3-star). Each star multiplies HP and AD by 1.8. The
@@ -151,8 +151,12 @@ Measured over 300 simulated games (`tools/aitest.mjs`):
 | boards of ≤1 unit after round 3 | 0% | common |
 
 Against a scripted competent player it wins roughly half of full games
-(`tools/gametest.mjs`, ~52% player win rate over 200 runs), with games running
-~14 rounds and ending around 24 HP. Its brain: level tempo of a competent
+(`tools/gametest.mjs`, ~46-54% player win rate), with games running ~19 rounds —
+long enough that level 7-8 and the 4/5-cost endgame are a normal part of a
+match rather than a theoretical one. It also commits to a named comp at game
+start (Executive Suite / Long Reach / Prodigy Rush / System Control), biasing
+its shopping toward one carry and core so its board reads as a strategy, and
+treats Merab/Ilia as its late-game payoff once its level can shop them. Its brain: level tempo of a competent
 player, interest banking with a committed roll-down when rich, a stabilise mode
 that dumps the reserve into rerolls when its own HP drops, and positioning that
 puts the tankiest bodies centre-front with reach units behind.

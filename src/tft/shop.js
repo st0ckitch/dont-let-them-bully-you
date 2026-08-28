@@ -5,7 +5,7 @@
 // per-level odds table, and three copies of a champion merging into the next
 // star level (cascading, so nine 1-stars become a 3-star).
 
-import { UNITS, UNITS_BY_COST, UNIT_BY_ID, POOL_COPIES, sellValue } from './units.js?v=202608281039';
+import { UNITS, UNITS_BY_COST, UNIT_BY_ID, POOL_COPIES, sellValue } from './units.js?v=202608281148';
 
 let rng = Math.random;
 export function setShopRng(fn) { rng = fn || Math.random; }
@@ -26,7 +26,11 @@ export const MAX_INTEREST = 5;    // caps at 50 gold saved
 // XP required to advance FROM this level to the next. Buying XP is the main
 // alternative to rerolling, so the curve is what makes "level or roll" a real
 // decision every round.
-export const XP_TO_NEXT = { 1: 2, 2: 2, 3: 6, 4: 10, 5: 20, 6: 36, 7: 48, 8: 80 };
+// The old top end (36/48/80) was tuned for a game that no longer exists: with
+// games ending near round 14, level 8 was unreachable and the level-7+ shop
+// odds for 4/5-costs were dead weight. This curve lands an engaged player at
+// 7-8 by the late-teens rounds, which is where Ilia becomes a real decision.
+export const XP_TO_NEXT = { 1: 2, 2: 2, 3: 6, 4: 10, 5: 18, 6: 26, 7: 34, 8: 48 };
 
 // Board slots equal player level, exactly like TFT.
 export const boardCapacity = level => level;
@@ -57,9 +61,9 @@ export const SHOP_ODDS = {
   4: [55, 30, 15, 0, 0],
   5: [45, 33, 20, 2, 0],
   6: [30, 40, 25, 5, 0],
-  7: [19, 30, 35, 15, 1],
-  8: [15, 20, 32, 30, 3],
-  9: [10, 17, 25, 33, 15],
+  7: [19, 30, 33, 14, 4],
+  8: [14, 20, 30, 29, 7],
+  9: [10, 15, 23, 33, 19],
 };
 
 // ---- shared unit pool ----

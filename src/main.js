@@ -1,17 +1,17 @@
 import * as THREE from 'three';
-import { FIGHTERS } from './config.js?v=202608281039';
-import { loadAssets } from './anim.js?v=202608281039';
-import { Fighter3D } from './fighter3d.js?v=202608281039';
-import { Engine, simFight, setFightRng, seededRng } from './fight.js?v=202608281039';
-import { Net, PROTOCOL_VERSION } from './net.js?v=202608281039';
-import { AutochessMode, PHASE as TFT_PHASE } from './tft/mode.js?v=202608281039';
-import { AutochessUI } from './tft/ui.js?v=202608281039';
-import { cellId as tftCellId } from './tft/hex.js?v=202608281039';
+import { FIGHTERS } from './config.js?v=202608281148';
+import { loadAssets } from './anim.js?v=202608281148';
+import { Fighter3D } from './fighter3d.js?v=202608281148';
+import { Engine, simFight, setFightRng, seededRng } from './fight.js?v=202608281148';
+import { Net, PROTOCOL_VERSION } from './net.js?v=202608281148';
+import { AutochessMode, PHASE as TFT_PHASE } from './tft/mode.js?v=202608281148';
+import { AutochessUI } from './tft/ui.js?v=202608281148';
+import { cellId as tftCellId } from './tft/hex.js?v=202608281148';
 
 // Build stamp. GitHub Pages serves assets with max-age=600, so a phone can run
 // ten-minute-old modules after a deploy and look like nothing shipped. This
 // shows on the loading screen so "did it update?" is answerable at a glance.
-const BUILD = '2026-08-28 10:39';
+const BUILD = '2026-08-28 11:48';
 window.__BUILD = BUILD;
 
 // Visible error trap. iOS Safari has no reachable console on a user's phone,

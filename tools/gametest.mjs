@@ -21,7 +21,7 @@ const BACK = [[3, 7], [2, 7], [4, 7], [1, 7], [5, 7], [0, 7], [6, 7]];
 // levels on tempo, fields its best units. Roughly what an engaged newcomer does.
 function playerTurn(roster, econ, pool, r, skill) {
   econ.grantXp(XP_PER_ROUND);
-  const target = r <= 2 ? 3 : r <= 5 ? 4 : r <= 8 ? 5 : r <= 11 ? 6 : r <= 15 ? 7 : r <= 20 ? 8 : 9;
+  const target = r <= 2 ? 3 : r <= 5 ? 4 : r <= 8 ? 5 : r <= 11 ? 6 : r <= 14 ? 7 : r <= 19 ? 8 : 9;
   const reserve = r <= 3 ? 0 : r <= 8 ? 10 : 20;
   while (econ.level < target && econ.gold - XP_COST >= reserve) if (!econ.buyXp()) break;
 
@@ -58,8 +58,9 @@ function playerTurn(roster, econ, pool, r, skill) {
       if (!pool.take(c.id)) continue;
       econ.spend(cost); roster.add(c.id); shop[c.i] = null; bought = true;
     }
-    // weaker players roll less
-    if (!bought && skill > 0.5 && econ.gold - REROLL_COST - reserve >= 14) {
+    // at level 8 an engaged player HUNTS the 5-cost: rolls harder
+    const hunting = skill > 0.5 && econ.level >= 7 && !roster.entries.some(e => e.unitId === 'ilia');
+    if (!bought && skill > 0.5 && econ.gold - REROLL_COST - reserve >= (hunting ? 6 : 14)) {
       econ.spend(REROLL_COST); shop = pool.roll(econ.level, SHOP_SIZE); continue;
     }
     if (!bought) break;
@@ -119,19 +120,22 @@ function runGame(seed, skill) {
       aComp: aiSpecs.map(s => s.id[0] + s.star).join(''),
     });
   }
-  return { log, hp, aiHp, rounds: r - 1, playerWon: aiHp <= 0 && hp > 0 };
+  const iliaSeen = roster.entries.some(e => e.unitId === 'ilia') || ai.roster.entries.some(e => e.unitId === 'ilia');
+  return { log, hp, aiHp, rounds: r - 1, playerWon: aiHp <= 0 && hp > 0, level: econ.level, aiLevel: ai.econ.level, iliaSeen };
 }
 
 const N = +(process.argv[2] || 300);
 for (const [skill, label] of [[0.9, 'engaged player'], [0.3, 'casual player']]) {
-  let wins = 0, roundsSum = 0, hpSum = 0;
+  let wins = 0, roundsSum = 0, hpSum = 0, lvlSum = 0, l8 = 0, ilia = 0;
   const rand = seeded(777);
   for (let i = 0; i < N; i++) {
     const g = runGame((rand() * 2 ** 31) | 0, skill);
     if (g.playerWon) wins++;
-    roundsSum += g.rounds; hpSum += g.hp;
+    roundsSum += g.rounds; hpSum += g.hp; lvlSum += g.level;
+    if (g.level >= 8) l8++;
+    if (g.iliaSeen) ilia++;
   }
-  console.log(`${label.padEnd(16)} win ${(100 * wins / N).toFixed(0).padStart(3)}%   avg game ${(roundsSum / N).toFixed(1)} rounds   avg final HP ${(hpSum / N).toFixed(0)}`);
+  console.log(`${label.padEnd(16)} win ${(100 * wins / N).toFixed(0).padStart(3)}%  avg ${(roundsSum / N).toFixed(1)} rounds  final lv ${(lvlSum / N).toFixed(1)}  reach L8 ${(100 * l8 / N).toFixed(0)}%  ilia in play ${(100 * ilia / N).toFixed(0)}%`);
 }
 
 console.log('\nsample game (engaged player):');

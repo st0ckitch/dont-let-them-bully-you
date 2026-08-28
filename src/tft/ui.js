@@ -3,9 +3,9 @@
 // Built imperatively against a container the mode owns, so none of it exists
 // (or costs anything) while the game is in auto-sim or control mode.
 
-import { TIER_COLOR, sellValue, UNIT_BY_ID } from './units.js?v=202608281039';
-import { PHASE } from './mode.js?v=202608281039';
-import { REROLL_COST, XP_COST, XP_PER_BUY, BENCH_SLOTS } from './shop.js?v=202608281039';
+import { TIER_COLOR, sellValue, UNIT_BY_ID } from './units.js?v=202608281148';
+import { PHASE } from './mode.js?v=202608281148';
+import { REROLL_COST, XP_COST, XP_PER_BUY, BENCH_SLOTS } from './shop.js?v=202608281148';
 
 const el = (tag, cls, html) => {
   const e = document.createElement(tag);

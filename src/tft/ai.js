@@ -11,12 +11,25 @@
 // merging, star levels that appeared by dice roll, and occasionally a single
 // lonely fighter. Every one of those is a symptom of having no roster.
 
-import { UNIT_BY_ID, UNITS, sellValue, statsFor } from './units.js?v=202608281039';
-import { Pool, Roster, Economy, SHOP_SIZE, REROLL_COST, XP_COST, XP_PER_ROUND, BENCH_SLOTS, boardCapacity } from './shop.js?v=202608281039';
-import * as Hex from './hex.js?v=202608281039';
+import { UNIT_BY_ID, UNITS, sellValue, statsFor } from './units.js?v=202608281148';
+import { Pool, Roster, Economy, SHOP_SIZE, REROLL_COST, XP_COST, XP_PER_ROUND, BENCH_SLOTS, boardCapacity } from './shop.js?v=202608281148';
+import * as Hex from './hex.js?v=202608281148';
 
 let rng = Math.random;
 export function setAiRng(fn) { rng = fn || Math.random; }
+
+// Comp plans. The AI commits to one at game start and biases its shopping
+// toward it, which is what makes its board read as a STRATEGY — the same core
+// starring up game after game — rather than a drawer of parts. Every plan
+// treats the 4/5-costs as its late-game payoff once the shop can offer them.
+// Carries deliberately differ per plan so consecutive games feel different.
+const COMPS = [
+  { name: 'Executive Suite', carry: 'david', core: ['cotne', 'dato', 'davit'] },
+  { name: 'Long Reach', carry: 'levan', core: ['gigi', 'cotne', 'davit'] },
+  { name: 'Prodigy Rush', carry: 'soso', core: ['davit', 'dato', 'cotne'] },
+  { name: 'System Control', carry: 'gigi', core: ['dato', 'cotne', 'soso'] },
+];
+const LATE_PAYOFF = ['merab', 'ilia'];
 
 // ---- tuning knobs ----
 // Difficulty lives here and ONLY here. Never give the AI stat bonuses: that
@@ -67,12 +80,15 @@ function wantScore(ai, unitId) {
   if (ones >= 2) return 900 + unit.cost;                 // completes a 2-star now
   if (twos >= 1) return 700 + unit.cost;                 // real progress toward a 3-star
   if (ones >= 1) return 600 + unit.cost;                 // second copy
-  // A fighter it does not own yet is worth taking mainly if it upgrades the
-  // board — high cost, or it simply does not have enough bodies yet. Once its
-  // own carries are capped this is the only branch left, so cost has to weigh
-  // heavily: trading up to a bigger unit is what a player does with the gold.
+  // A fighter it does not own yet: comp members come first, then the 4/5-cost
+  // payoff once the shop can realistically offer them, then raw cost. This is
+  // the bias that turns "a drawer of parts" into a recognisable strategy.
   const short = ai.roster.entries.length < boardCapacity(ai.econ.level);
-  return (short ? 300 : 120) + unit.cost * 45;
+  let s = (short ? 300 : 120) + unit.cost * 45;
+  if (unitId === ai.plan.carry) s += 190;
+  else if (ai.plan.core.includes(unitId)) s += 130;
+  if (ai.econ.level >= 7 && LATE_PAYOFF.includes(unitId)) s += 220;
+  return s;
 }
 
 // Fielding order: stars first, then cost. A human plays their best board, so
@@ -92,6 +108,7 @@ export class AiOpponent {
     this.econ = new Economy();
     this.econ.level = 2;
     this.econ.gold = 3; // same opening stake the player gets — it was starting a gold down
+    this.plan = COMPS[Math.floor(rng() * COMPS.length)];
     this.lastBoard = [];
   }
 
@@ -99,6 +116,18 @@ export class AiOpponent {
   takeTurn(roundIndex) {
     const r = roundIndex;
     this.econ.grantXp(XP_PER_ROUND);
+    // Late game a person trades scaffolding for payoff: benched 1-star 1-costs
+    // that back nothing get sold to fund the merab/ilia rolls.
+    if (this.econ.level >= 7) {
+      for (const e of this.roster.bench.slice()) {
+        const u = UNIT_BY_ID[e.unitId];
+        if (e.star !== 1 || u.cost > 1) continue;
+        const copies = this.roster.entries.filter(x => x.unitId === e.unitId).length;
+        if (copies >= 2) continue;   // half of a pair — still scaffolding
+        this.econ.gold += sellValue(u.cost, 1);
+        this.roster.remove(e);
+      }
+    }
     this._levelUp(r);
     this._shopPhase(r);
     this._levelUp(r); // leftover gold after shopping can still buy tempo
