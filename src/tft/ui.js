@@ -3,9 +3,9 @@
 // Built imperatively against a container the mode owns, so none of it exists
 // (or costs anything) while the game is in auto-sim or control mode.
 
-import { TIER_COLOR, sellValue, UNIT_BY_ID } from './units.js?v=202608271934';
-import { PHASE } from './mode.js?v=202608271934';
-import { REROLL_COST, XP_COST, XP_PER_BUY, BENCH_SLOTS } from './shop.js?v=202608271934';
+import { TIER_COLOR, sellValue, UNIT_BY_ID } from './units.js?v=202608281039';
+import { PHASE } from './mode.js?v=202608281039';
+import { REROLL_COST, XP_COST, XP_PER_BUY, BENCH_SLOTS } from './shop.js?v=202608281039';
 
 const el = (tag, cls, html) => {
   const e = document.createElement(tag);
@@ -294,8 +294,11 @@ export class AutochessUI {
       const art = this.portraits[u.id]
         ? `<img src="${this.portraits[u.id]}" alt="">`
         : `<span class="acCardFlag">${u.cfg.flag}</span>`;
+      const up = c.upgrade
+        ? `<span class="acUp s${c.upgrade}" title="completes a ${c.upgrade}-star">▲</span>`
+        : '';
       card.innerHTML = `
-        <div class="acCardArt">${art}${pips}</div>
+        <div class="acCardArt">${art}${pips}${up}</div>
         <div class="acCardName">${u.short}</div>
         <div class="acCardNick">${u.nick}</div>
         <div class="acCardFoot"><span class="acCardAbil">${u.ability.name}</span><b>${u.cost}g</b></div>`;
@@ -550,11 +553,24 @@ export class AutochessUI {
   }
 
   onGameOver(s) {
+    // onRoundEnd fires just before this and schedules a banner auto-hide that
+    // would swallow the game-over screen (and its button) 2.6s in
+    clearTimeout(this._bannerT);
     this.banner.innerHTML = s.victory
       ? `<div class="acBannerMain win">VICTORY</div>
          <div class="acBannerSub">Opponent eliminated at stage ${s.label} — you finished on ${s.hp} HP</div>`
       : `<div class="acBannerMain lose">ELIMINATED</div>
          <div class="acBannerSub">You reached stage ${s.label} at level ${s.level} — opponent had ${s.aiHp} HP left</div>`;
+    // Online, a unilateral restart is meaningless — the peer is gone or won,
+    // so the button exits instead. reload() is the honest teardown: it drops
+    // the PeerJS session and every bit of match state at once.
+    const btn = el('button', 'acAgain', s.online ? 'EXIT TO MENU' : 'PLAY AGAIN');
+    tapify(btn, () => {
+      if (s.online) { location.reload(); return; }
+      this.banner.classList.add('hidden');
+      this.mode.start();
+    });
+    this.banner.appendChild(btn);
     this.banner.classList.remove('hidden');
   }
 

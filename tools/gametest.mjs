@@ -91,6 +91,7 @@ function runGame(seed, skill) {
   let hp = 100, aiHp = 100, r = 1;
   const log = [];
   for (; r <= 30 && hp > 0 && aiHp > 0; r++) {
+    ai.econ.hp = aiHp; // the live mode feeds this too — stabilise-mode needs it
     const aiSpecs = ai.takeTurn(r);
     const placed = playerTurn(roster, econ, pool, r, skill);
     if (!placed.length) break;

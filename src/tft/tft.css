@@ -550,6 +550,23 @@ body.tftMode #gameMicBtn {
 }
 .acPips i.on { background: var(--gold); }
 
+/* animated "this card completes a star-up" indicator */
+.acUp {
+  position: absolute;
+  left: 5px; top: 2px;
+  font-size: 15px;
+  line-height: 1;
+  text-shadow: 0 1px 4px #000, 0 0 8px currentColor;
+  animation: acRise 0.85s ease-in-out infinite;
+  pointer-events: none;
+}
+.acUp.s2 { color: #c3cdd2; }
+.acUp.s3 { color: #ffd24a; }
+@keyframes acRise {
+  0%, 100% { transform: translateY(3px); opacity: 0.7; }
+  50% { transform: translateY(-3px); opacity: 1; }
+}
+
 .acCardName { font-size: 14px; font-weight: 700; letter-spacing: 1px; padding: 4px 7px 0; }
 .acCardNick { font-size: 9px; letter-spacing: 1px; opacity: 0.5; padding: 0 7px 3px; text-transform: uppercase; }
 .acCardFoot {
@@ -625,6 +642,20 @@ body.tftMode #gameMicBtn {
 .acBannerMain.win { color: #7ef0a8; }
 .acBannerMain.lose { color: #ff6b6b; }
 .acBannerSub { font-size: 13px; letter-spacing: 2px; opacity: 0.7; margin-top: 2px; }
+.acAgain {
+  pointer-events: auto;
+  margin-top: 16px;
+  background: linear-gradient(180deg, #2c6fd6, #1b4b9c);
+  border: 1px solid #6fa6ff;
+  border-radius: 9px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  padding: 11px 26px;
+  box-shadow: 0 6px 20px -8px #2c6fd6;
+}
+.acAgain:hover { filter: brightness(1.15); }
 .acBannerIn { animation: acBannerPop 0.4s cubic-bezier(0.2, 1.4, 0.4, 1); }
 
 @keyframes acBannerPop {

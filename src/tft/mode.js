@@ -5,18 +5,18 @@
 // the sim resolves) -> RESOLVE (damage, gold, streak) -> next round.
 
 import * as THREE from 'three';
-import * as Hex from './hex.js?v=202608271934';
-import { Board3D } from './board3d.js?v=202608271934';
-import { UnitView } from './unitview.js?v=202608271934';
-import { UNIT_BY_ID, UNITS, sellValue, statsFor, abilityText } from './units.js?v=202608271934';
-import { AiOpponent } from './ai.js?v=202608271934';
-import { NetMatch, canonicalUnits } from './netmatch.js?v=202608271934';
-import { Combat, CombatUnit, setCombatRng, ROUND_TIME, playerDamage } from './combat.js?v=202608271934';
-import { seededRng } from '../fight.js?v=202608271934';
+import * as Hex from './hex.js?v=202608281039';
+import { Board3D } from './board3d.js?v=202608281039';
+import { UnitView } from './unitview.js?v=202608281039';
+import { UNIT_BY_ID, UNITS, sellValue, statsFor, abilityText } from './units.js?v=202608281039';
+import { AiOpponent } from './ai.js?v=202608281039';
+import { NetMatch, canonicalUnits } from './netmatch.js?v=202608281039';
+import { Combat, CombatUnit, setCombatRng, ROUND_TIME, playerDamage } from './combat.js?v=202608281039';
+import { seededRng } from '../fight.js?v=202608281039';
 import {
   Pool, Roster, Economy, setShopRng,
   SHOP_SIZE, REROLL_COST, XP_COST, XP_PER_ROUND, BENCH_SLOTS, boardCapacity,
-} from './shop.js?v=202608271934';
+} from './shop.js?v=202608281039';
 
 export const PHASE = { PLANNING: 'planning', COMBAT: 'combat', RESOLVE: 'resolve', OVER: 'over' };
 
@@ -195,8 +195,10 @@ export class AutochessMode {
     for (const v of this.enemyViews) v.dispose();
     this.enemyViews = [];
 
-    // solo only: the AI shops and re-forms its board before the player acts
-    this.ai?.takeTurn(this.roundIndex);
+    // solo only: the AI shops and re-forms its board before the player acts.
+    // It is handed its own life total first — its stabilise/roll-down logic
+    // keys off HP, and a bot that thinks it is healthy saves while it dies.
+    if (this.ai) { this.ai.econ.hp = this.oppHp; this.ai.takeTurn(this.roundIndex); }
 
     this.econ.grantXp(XP_PER_ROUND);
     this.syncViews();
@@ -585,12 +587,20 @@ export class AutochessMode {
       capacity: boardCapacity(this.econ.level),
       onBoard: this.roster.board.length,
       frozen: !!this.frozen,
-      shop: this.shop.map(id => id ? {
-        id,
-        unit: UNIT_BY_ID[id],
-        progress: this.roster.copiesToward(id),
-        affordable: this.econ.gold >= UNIT_BY_ID[id].cost,
-      } : null),
+      shop: this.shop.map(id => {
+        if (!id) return null;
+        const ones = this.roster.entries.filter(e => e.unitId === id && e.star === 1).length;
+        const twos = this.roster.entries.filter(e => e.unitId === id && e.star === 2).length;
+        return {
+          id,
+          unit: UNIT_BY_ID[id],
+          progress: this.roster.copiesToward(id),
+          // buying this card triggers a merge RIGHT NOW: a third 1-star copy
+          // makes a 2-star; if two 2-stars are also waiting, it cascades to 3
+          upgrade: ones % 3 === 2 ? (twos === 2 ? 3 : 2) : null,
+          affordable: this.econ.gold >= UNIT_BY_ID[id].cost,
+        };
+      }),
       bench: this.roster.bench.map(e => ({ entry: e, unit: UNIT_BY_ID[e.unitId], star: e.star })),
       board: this.roster.board.map(e => ({ entry: e, unit: UNIT_BY_ID[e.unitId], star: e.star, cell: e.cell })),
       selected: this.selected,

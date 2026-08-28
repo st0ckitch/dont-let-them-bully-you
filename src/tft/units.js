@@ -6,7 +6,7 @@
 // through into this mode. Cost tier is the one genuinely new axis: it sets the
 // power budget, exactly like TFT's 1-5 cost ladder.
 
-import { FIGHTERS } from '../config.js?v=202608271934';
+import { FIGHTERS } from '../config.js?v=202608281039';
 
 // ---- cost tiers ----
 // Thematic ladder: the office crew comes cheap, the two real UFC champions are
@@ -50,9 +50,14 @@ export function sellValue(cost, star) {
 // HP sits ~12% below TFT's equivalents: with no items or trait buffs to ramp
 // damage, full 6v6 boards at TFT's health pools ran past the round timer four
 // times out of five and were decided by the tiebreak instead of a clean wipe.
-const TIER_HP = { 1: 485, 2: 575, 3: 660, 4: 790, 5: 970 };
-const TIER_AD = { 1: 48, 2: 55, 3: 62, 4: 74, 5: 92 };
-const TIER_RESIST = { 1: 20, 2: 25, 3: 30, 4: 40, 5: 50 };
+// Steeper than before: with the old curve a 1-star Merab (790hp/74ad) LOST to
+// any 2-star 1-cost (873hp/86ad), which made the premium tiers feel like a
+// downgrade the moment the cheap units starred up. TFT's rule of thumb is that
+// a 4-cost 1-star should sit BETWEEN a 2-star 2-cost and a 2-star 3-cost; this
+// curve puts our tiers back on that line.
+const TIER_HP = { 1: 485, 2: 595, 3: 730, 4: 910, 5: 1160 };
+const TIER_AD = { 1: 48, 2: 58, 3: 70, 4: 88, 5: 114 };
+const TIER_RESIST = { 1: 20, 2: 26, 3: 33, 4: 45, 5: 60 };
 
 // star scaling — TFT's evergreen rule: each star multiplies HP and AD by 1.8
 export const STAR_SCALE = [0, 1, 1.8, 3.24];
@@ -81,7 +86,7 @@ const ABILITIES = {
   dato: { name: 'Pressure Flurry', clip: 'punch_combo_5', mana: 55, kind: 'flurry', hits: 4, dmg: 3.4 },
   levan: { name: 'Spin Cycle', clip: 'lunge_spin_kick', mana: 65, kind: 'cleave', hits: 1, dmg: 3.4 },
   david: { name: 'Executive Decision', clip: 'backflip_kick', mana: 70, kind: 'burst', hits: 1, dmg: 5.0 },
-  merab: { name: 'The Machine', clip: 'spartan_kick', mana: 50, kind: 'heal', hits: 1, dmg: 3.6, heal: 0.85 },
+  merab: { name: 'The Machine', clip: 'spartan_kick', mana: 50, kind: 'heal', hits: 1, dmg: 3.4, heal: 1.35 },
   ilia: { name: 'El Matador', clip: 'flying_kick', mana: 80, kind: 'burst', hits: 1, dmg: 6.0 },
 };
 

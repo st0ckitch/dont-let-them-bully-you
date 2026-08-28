@@ -11,9 +11,9 @@
 // merging, star levels that appeared by dice roll, and occasionally a single
 // lonely fighter. Every one of those is a symptom of having no roster.
 
-import { UNIT_BY_ID, UNITS, sellValue } from './units.js?v=202608271934';
-import { Pool, Roster, Economy, SHOP_SIZE, REROLL_COST, XP_COST, XP_PER_ROUND, BENCH_SLOTS, boardCapacity } from './shop.js?v=202608271934';
-import * as Hex from './hex.js?v=202608271934';
+import { UNIT_BY_ID, UNITS, sellValue, statsFor } from './units.js?v=202608281039';
+import { Pool, Roster, Economy, SHOP_SIZE, REROLL_COST, XP_COST, XP_PER_ROUND, BENCH_SLOTS, boardCapacity } from './shop.js?v=202608281039';
+import * as Hex from './hex.js?v=202608281039';
 
 let rng = Math.random;
 export function setAiRng(fn) { rng = fn || Math.random; }
@@ -23,18 +23,25 @@ export function setAiRng(fn) { rng = fn || Math.random; }
 // breaks the pool-and-star-up logic the player is busy learning, and makes a
 // lost round unreadable ("why did that 2-star lose to a 2-star?").
 export const AI_TUNING = {
-  // level it tries to reach by a given global round index
-  levelTempo: r => (r <= 2 ? 3 : r <= 5 ? 4 : r <= 8 ? 5 : r <= 11 ? 6 : r <= 15 ? 7 : r <= 20 ? 8 : 9),
-  // Gold it holds back for interest. Capped at 30 rather than climbing: a
-  // player banks toward the 50-gold interest cap but still spends down to
-  // stabilise, and an AI that only saves ends the game rich and dead.
-  reserve: r => (r <= 3 ? 0 : r <= 8 ? 10 : 20),
-  // Shop rolls per round once it is flush. This is the main lever that turns
-  // banked gold into board strength — with it set too low the AI sat on a pile
-  // of gold while its stars fell a full level behind the player's.
-  maxRolls: r => (r <= 3 ? 0 : r <= 8 ? 2 : 4),
+  // Level tempo of a competent player: 6 by the start of stage 3, 8 by the
+  // late-mid game. Board slots are the strongest stat in the game, and the old
+  // curve conceded a full level of tempo through the mid game.
+  levelTempo: r => (r <= 2 ? 3 : r <= 4 ? 4 : r <= 7 ? 5 : r <= 10 ? 6 : r <= 14 ? 7 : r <= 18 ? 8 : 9),
+  // Gold held back for interest. Banking climbs toward the 30s mid-game like a
+  // real player, but the reserve is IGNORED when stabilising (low HP) — an AI
+  // that saves while dying ends the game rich and dead.
+  reserve: (r, hp) => (hp <= 50 ? 0 : r <= 3 ? 0 : r <= 8 ? 10 : 20),
+  // Shop rolls per round once flush. Low HP or a big bank triggers a committed
+  // roll-down — the single biggest brain upgrade: gold on the table converts
+  // into stars exactly when the game is on the line.
+  maxRolls: (r, hp, gold) => {
+    let n = r <= 3 ? 1 : r <= 8 ? 3 : 5;
+    if (hp <= 50) n += 3;             // stabilise: dig for upgrades NOW
+    if (r >= 9 && gold >= 40) n += 2; // rich: convert the bank into a board
+    return n;
+  },
   // spare gold above the reserve needed before it will pay to reroll
-  rollThreshold: 8,
+  rollThreshold: 6,
 };
 
 // How much the AI wants a given shop card. Ordered so that finishing an upgrade
@@ -84,7 +91,7 @@ export class AiOpponent {
     this.roster = new Roster(pool);
     this.econ = new Economy();
     this.econ.level = 2;
-    this.econ.gold = 2;
+    this.econ.gold = 3; // same opening stake the player gets — it was starting a gold down
     this.lastBoard = [];
   }
 
@@ -100,7 +107,7 @@ export class AiOpponent {
 
   _levelUp(r) {
     const target = AI_TUNING.levelTempo(r);
-    const reserve = AI_TUNING.reserve(r);
+    const reserve = AI_TUNING.reserve(r, this.econ.hp);
     while (this.econ.level < target && this.econ.gold - XP_COST >= reserve) {
       if (!this.econ.buyXp()) break;
     }
@@ -110,8 +117,8 @@ export class AiOpponent {
   // flush. Rolling AFTER a successful buy matters too — that is how a player
   // chains into the third copy of something they just paired.
   _shopPhase(r) {
-    const reserve = AI_TUNING.reserve(r);
-    let rolls = AI_TUNING.maxRolls(r);
+    const reserve = AI_TUNING.reserve(r, this.econ.hp);
+    let rolls = AI_TUNING.maxRolls(r, this.econ.hp, this.econ.gold);
     this._buyFrom(this.pool.roll(this.econ.level, SHOP_SIZE), r);
     while (rolls > 0 && this.econ.gold - REROLL_COST - reserve >= AI_TUNING.rollThreshold) {
       rolls--;
@@ -122,7 +129,7 @@ export class AiOpponent {
 
   // Returns true if it bought at least one card this pass.
   _buyFrom(shop, r) {
-    const reserve = AI_TUNING.reserve(r);
+    const reserve = AI_TUNING.reserve(r, this.econ.hp);
     const ranked = shop
       .map((id, i) => (id ? { id, i, score: wantScore(this, id) } : null))
       .filter(Boolean)
@@ -168,15 +175,12 @@ export class AiOpponent {
     return true;
   }
 
-  // Field the best `level` units it owns, melee forward and reach behind.
+  // Field the best `level` units it owns, and place them like a person would:
+  // the beefiest bodies take the centre of the front line where the enemy
+  // collapses in, ranged units sit behind them, and fragile Carry-role melee
+  // hide in the back corners — the longest walk for whatever wants to kill them.
   buildBoard() {
     const cap = boardCapacity(this.econ.level);
-
-    // Greedy pick with a small diversity tiebreak. Holding two 1-star copies
-    // while hunting the third is normal play, but when the alternative is an
-    // equally-ranked DIFFERENT fighter a person spreads out rather than
-    // stacking. The penalty is deliberately smaller than one cost tier, so it
-    // only ever breaks ties — it will never bench a genuinely better unit.
     const remaining = [...this.roster.entries];
     const picked = {};
     const chosen = [];
@@ -192,24 +196,37 @@ export class AiOpponent {
       chosen.push(e);
     }
 
-    // mirror of the player's preferred slots, so both sides build the same shape
-    // Mark what is fielded vs benched. Roster.bench is "entries with no cell",
-    // so leaving every entry cell-less made the AI look permanently bench-full
-    // at 9 units — it then sold copies to make room instead of collecting them,
-    // capping its roster while the player kept board + bench.
     for (const e of this.roster.entries) e.cell = null;
 
-    const front = MIRROR_FRONT.slice();
-    const back = MIRROR_BACK.slice();
+    const front = MIRROR_FRONT.slice();   // its row nearest the centre line
+    const back = MIRROR_BACK.slice();     // its home row
+
+    const info = e => {
+      const u = UNIT_BY_ID[e.unitId];
+      const st = statsFor(u, e.star);
+      return { e, u, hp: st.maxHp };
+    };
+    const all = chosen.map(info);
+    const reach = all.filter(x => x.u.range > 1);
+    // EVERY melee unit fights on the front line — benching a melee carry in a
+    // back corner cost it four seconds of walking while its front line died,
+    // and that alone swung full games by ~25 points. Tanks take the centre
+    // (where the enemy collapses in), damage dealers slot outward from there.
+    const line = all.filter(x => x.u.range === 1)
+      .sort((a, b) => b.hp - a.hp); // tankiest centre-first, carries at the edges
+
     const specs = [];
-    for (const e of chosen) {
-      const unit = UNIT_BY_ID[e.unitId];
-      const pool = unit.range > 1 ? (back.length ? back : front) : (front.length ? front : back);
-      const slot = pool.shift();
-      if (!slot) break;
-      e.cell = Hex.cellId(slot.col, slot.row);
-      specs.push({ id: e.unitId, star: e.star, col: slot.col, row: slot.row });
-    }
+    const put = (x, slot) => {
+      if (!slot) return false;
+      x.e.cell = Hex.cellId(slot.col, slot.row);
+      specs.push({ id: x.e.unitId, star: x.e.star, col: slot.col, row: slot.row });
+      return true;
+    };
+    const anywhere = () => front.shift() || back.shift();
+
+    for (const x of line) put(x, front.shift() || anywhere());
+    for (const x of reach) put(x, back.shift() || anywhere());
+
     this.lastBoard = specs;
     return specs;
   }

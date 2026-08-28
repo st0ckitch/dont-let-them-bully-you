@@ -150,8 +150,17 @@ Measured over 300 simulated games (`tools/aitest.mjs`):
 | boards with 3+ copies at one star | 0 | common |
 | boards of ≤1 unit after round 3 | 0% | common |
 
-Against a scripted competent player it wins roughly a third of full games
-(`tools/gametest.mjs`), with games running ~13 rounds.
+Against a scripted competent player it wins roughly half of full games
+(`tools/gametest.mjs`, ~52% player win rate over 200 runs), with games running
+~14 rounds and ending around 24 HP. Its brain: level tempo of a competent
+player, interest banking with a committed roll-down when rich, a stabilise mode
+that dumps the reserve into rerolls when its own HP drops, and positioning that
+puts the tankiest bodies centre-front with reach units behind.
+
+## Reading the shop
+
+A card that would **complete a merge right now** carries an animated up-arrow:
+silver for a 2-star, gold when it cascades straight to a 3-star.
 
 ## The roster as units
 
