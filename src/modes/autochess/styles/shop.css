@@ -1,0 +1,295 @@
+/* ---------- bench ---------- */
+/* The whole bottom cluster: side controls, then a column holding bench above
+   cards above the freeze bar. Spans the full width and centres its contents —
+   anchoring with `left: 50%` instead makes the containing block only half the
+   viewport, which crushed the fixed-width cards into slivers. */
+.acBottom {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 14px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.acBench {
+  display: flex;
+  gap: 6px;
+  pointer-events: auto;
+  align-self: center;
+}
+
+.acBenchSlot {
+  width: 58px;
+  height: 58px;
+  flex: 0 0 58px;
+  border-radius: 8px;
+  background: rgba(10, 17, 28, 0.6);
+  border: 1px solid rgba(140, 170, 210, 0.18);
+  position: relative;
+  overflow: hidden;
+}
+.acBenchSlot.acFilled {
+  cursor: pointer;
+  border-color: var(--tier);
+  box-shadow: inset 0 0 14px -4px var(--tier);
+}
+.acBenchSlot.acSel { outline: 2px solid var(--gold); outline-offset: 1px; }
+.acBenchSlot img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.acBenchSlot > span { display: grid; place-items: center; height: 100%; font-size: 22px; }
+/* star pips read bronze/silver/gold by STAR level, matching the 3D plate;
+   cost tier is carried by the slot border instead */
+.acStars {
+  position: absolute;
+  left: 0; right: 0; bottom: 1px;
+  text-align: center;
+  font-size: 11px;
+  font-style: normal;
+  text-shadow: 0 1px 3px #000;
+}
+.acStars.s1 { color: #a2703a; }
+.acStars.s2 { color: #c3cdd2; }
+.acStars.s3 { color: #ffd24a; }
+
+/* ---------- shop ---------- */
+.acShopSide {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 104px;
+  flex: 0 0 104px;
+}
+
+.acGold {
+  background: var(--panel);
+  border: 1px solid rgba(240, 198, 116, 0.4);
+  border-radius: 8px;
+  padding: 5px 9px;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.acGold b { font-size: 22px; color: var(--gold); line-height: 1; }
+.acGold span { font-size: 10px; letter-spacing: 1.5px; opacity: 0.6; }
+
+.acSideBtn {
+  flex: 1;
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: 8px;
+  color: #e8eef7;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+  padding: 6px 8px;
+  transition: border-color 0.12s, background 0.12s;
+}
+.acSideBtn b { font-size: 13px; letter-spacing: 0.5px; }
+.acSideBtn span { font-size: 10px; opacity: 0.6; }
+.acSideBtn:hover:not(:disabled) { border-color: var(--gold); background: rgba(20, 32, 50, 0.9); }
+.acSideBtn:disabled { opacity: 0.38; cursor: not-allowed; }
+
+.acCardsWrap { display: flex; flex-direction: column; gap: 8px; flex: 0 0 auto; }
+.acCards { display: flex; gap: 7px; pointer-events: auto; }
+
+/* ---------- freeze ---------- */
+.acFreeze {
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: 7px;
+  color: #e8eef7;
+  padding: 4px 10px;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 7px;
+  transition: border-color 0.12s, background 0.12s, color 0.12s;
+}
+.acFreeze b { font-size: 11px; letter-spacing: 1.2px; }
+.acFreeze span { font-size: 9px; opacity: 0.5; letter-spacing: 0.5px; }
+.acFreeze:hover:not(:disabled) { border-color: #6fd3ff; }
+.acFreeze:disabled { opacity: 0.35; cursor: not-allowed; }
+.acFreeze.on {
+  background: linear-gradient(180deg, rgba(43, 120, 190, 0.5), rgba(20, 60, 105, 0.6));
+  border-color: #6fd3ff;
+  color: #cdeeff;
+}
+.acFreeze.on span { opacity: 0.72; }
+
+/* a frozen shop reads as held, not merely styled — the cards get the same
+   cyan edge as the toggle so the two are unmistakably linked */
+.acCards.acFrozen .acCard { box-shadow: 0 0 0 1px #6fd3ff, 0 0 14px -6px #6fd3ff; }
+.acCards.acFrozen .acCardEmpty { box-shadow: 0 0 0 1px rgba(111, 211, 255, 0.35); }
+
+.acCard {
+  width: 128px;
+  flex: 0 0 128px; /* never let flex shrink a card into an unreadable sliver */
+  height: 108px;
+  background: linear-gradient(180deg, rgba(16, 26, 42, 0.95), rgba(9, 14, 24, 0.97));
+  border: 1px solid var(--tier, #444);
+  border-bottom: 3px solid var(--tier, #444);
+  border-radius: 9px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.12s;
+  display: flex;
+  flex-direction: column;
+}
+.acCard:hover { transform: translateY(-4px); box-shadow: 0 8px 22px -6px var(--tier); }
+.acCard.acPoor { opacity: 0.45; }
+.acCardEmpty {
+  border: 1px dashed rgba(140, 170, 210, 0.16);
+  background: rgba(8, 12, 20, 0.5);
+  cursor: default;
+}
+.acCardEmpty:hover { transform: none; box-shadow: none; }
+
+.acCardArt { position: relative; height: 64px; background: rgba(0, 0, 0, 0.35); }
+.acCardArt img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 22%; display: block; }
+.acCardFlag { display: grid; place-items: center; height: 100%; font-size: 26px; }
+
+.acPips {
+  position: absolute;
+  right: 4px; top: 4px;
+  display: flex;
+  gap: 2px;
+}
+.acPips i {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.22);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5);
+}
+.acPips i.on { background: var(--gold); }
+
+/* animated "this card completes a star-up" indicator */
+.acUp {
+  position: absolute;
+  left: 5px; top: 2px;
+  font-size: 15px;
+  line-height: 1;
+  text-shadow: 0 1px 4px #000, 0 0 8px currentColor;
+  animation: acRise 0.85s ease-in-out infinite;
+  pointer-events: none;
+}
+.acUp.s2 { color: #c3cdd2; }
+.acUp.s3 { color: #ffd24a; }
+@keyframes acRise {
+  0%, 100% { transform: translateY(3px); opacity: 0.7; }
+  50% { transform: translateY(-3px); opacity: 1; }
+}
+
+.acCardName { font-size: 14px; font-weight: 700; letter-spacing: 1px; padding: 4px 7px 0; }
+.acCardNick { font-size: 9px; letter-spacing: 1px; opacity: 0.5; padding: 0 7px 3px; text-transform: uppercase; }
+.acCardFoot {
+  margin-top: auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 3px 7px 5px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+.acCardAbil { font-size: 9px; opacity: 0.6; max-width: 84px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.acCardFoot b { font-size: 13px; color: var(--gold); }
+
+/* ---------- ready button ---------- */
+.acActions { display: flex; gap: 6px; align-items: stretch; }
+.acActions .acFreeze { flex: 1 1 auto; }
+
+/* desktop keeps it floating clear of the shop; `position: absolute` takes it
+   out of .acActions' flow so the freeze bar still spans the full width */
+.acReady {
+  position: absolute;
+  right: 18px;
+  bottom: 100px;
+  background: linear-gradient(180deg, #2c6fd6, #1b4b9c);
+  border: 1px solid #6fa6ff;
+  border-radius: 9px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  padding: 12px 20px;
+  box-shadow: 0 6px 20px -8px #2c6fd6;
+}
+.acReady:hover { filter: brightness(1.15); }
+.acReady.hidden { display: none; }
+
+/* ---------- transient ---------- */
+.acToast {
+  position: absolute;
+  left: 50%;
+  bottom: 232px;
+  transform: translateX(-50%);
+  background: rgba(10, 17, 28, 0.94);
+  border: 1px solid var(--edge);
+  border-radius: 7px;
+  padding: 7px 15px;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+}
+.acToast.hidden { display: none; }
+.acToastIn { animation: acPop 0.22s ease-out; }
+
+@keyframes acPop {
+  from { opacity: 0; transform: translateX(-50%) translateY(6px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.acBanner {
+  position: absolute;
+  left: 50%;
+  top: 40%;
+  transform: translateX(-50%);
+  text-align: center;
+  pointer-events: none;
+}
+.acBanner.hidden { display: none; }
+.acBannerMain {
+  font-family: 'Anton', 'Geist', sans-serif;
+  font-size: 46px;
+  letter-spacing: 3px;
+  text-shadow: 0 4px 24px rgba(0, 0, 0, 0.9);
+}
+.acBannerMain.win { color: #7ef0a8; }
+.acBannerMain.lose { color: #ff6b6b; }
+.acBannerSub { font-size: 13px; letter-spacing: 2px; opacity: 0.7; margin-top: 2px; }
+.acAgain {
+  pointer-events: auto;
+  margin-top: 16px;
+  background: linear-gradient(180deg, #2c6fd6, #1b4b9c);
+  border: 1px solid #6fa6ff;
+  border-radius: 9px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  padding: 11px 26px;
+  box-shadow: 0 6px 20px -8px #2c6fd6;
+}
+.acAgain:hover { filter: brightness(1.15); }
+.acBannerIn { animation: acBannerPop 0.4s cubic-bezier(0.2, 1.4, 0.4, 1); }
+
+@keyframes acBannerPop {
+  from { opacity: 0; transform: translateX(-50%) scale(0.85); }
+  to { opacity: 1; transform: translateX(-50%) scale(1); }
+}
+
+/* ---------- floating combat text ---------- */
+.acFloat { position: absolute; inset: 0; overflow: hidden; }
+.acDmg {
+  position: absolute;
+  left: 0; top: 0;
+  font-weight: 700;
+  font-size: 15px;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.95);
+  will-change: transform, opacity;
+  white-space: nowrap;
+}
+.acDmg.phys { color: #ffd9a0; }
+.acDmg.magic { color: #b98cff; }
+.acDmg.crit { color: #ff7b5c; font-size: 21px; }
+.acDmg.heal { color: #7ef0a8; }

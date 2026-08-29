@@ -1,7 +1,7 @@
 // Headless Monte Carlo of the autochess battle sim.
 // Checks the engine terminates, that mirror matches are ~50/50, that star
 // level and cost tier both actually matter, and reports typical fight length.
-const L = '../src/tft/';
+const L = '../src/modes/autochess/';
 const { Combat, CombatUnit, setCombatRng, ROUND_TIME, playerDamage, mitigate } = await import(L + 'combat.js');
 const { UNITS, UNIT_BY_ID, statsFor } = await import(L + 'units.js');
 const Hex = await import(L + 'hex.js');

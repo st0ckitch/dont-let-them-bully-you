@@ -1,6 +1,6 @@
 // Is the player's 80% win rate a real strategy edge, or a side bias?
 // Run the SAME AiOpponent policy on both sides and see if it's 50/50.
-const L = '../src/tft/';
+const L = '../src/modes/autochess/';
 const { Combat, CombatUnit, setCombatRng, ROUND_TIME, playerDamage } = await import(L + 'combat.js');
 const { UNIT_BY_ID } = await import(L + 'units.js');
 const { Pool } = await import(L + 'shop.js');

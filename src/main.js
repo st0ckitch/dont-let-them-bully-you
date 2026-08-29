@@ -1,12 +1,13 @@
 import * as THREE from 'three';
-import { FIGHTERS } from './config.js?v=202608281148';
+import { FIGHTERS } from './fighters/index.js?v=202608281148';
+import { MOVES } from './moves/index.js?v=202608281148';
 import { loadAssets } from './anim.js?v=202608281148';
 import { Fighter3D } from './fighter3d.js?v=202608281148';
-import { Engine, simFight, setFightRng, seededRng } from './fight.js?v=202608281148';
+import { Engine, simFight, setFightRng, seededRng } from './modes/octagon/fight.js?v=202608281148';
 import { Net, PROTOCOL_VERSION } from './net.js?v=202608281148';
-import { AutochessMode, PHASE as TFT_PHASE } from './tft/mode.js?v=202608281148';
-import { AutochessUI } from './tft/ui.js?v=202608281148';
-import { cellId as tftCellId } from './tft/hex.js?v=202608281148';
+import { AutochessMode, PHASE as AUTOCHESS_PHASE } from './modes/autochess/mode.js?v=202608281148';
+import { AutochessUI } from './modes/autochess/ui.js?v=202608281148';
+import { cellId as autochessCellId } from './modes/autochess/hex.js?v=202608281148';
 
 // Build stamp. GitHub Pages serves assets with max-age=600, so a phone can run
 // ten-minute-old modules after a deploy and look like nothing shipped. This
@@ -224,13 +225,13 @@ class FX {
     this.voices = {};
     this.announces = {};
     for (const c of cfgs) {
-      if (c.voice) {
-        const a = new Audio(c.voice);
+      if (c.voice.win) {
+        const a = new Audio(c.voice.win);
         a.preload = 'auto';
         this.voices[c.id] = a;
       }
-      if (c.announce) {
-        const a = new Audio(c.announce);
+      if (c.voice.announce) {
+        const a = new Audio(c.voice.announce);
         a.preload = 'auto';
         this.announces[c.id] = a;
       }
@@ -558,6 +559,9 @@ const hpColor = hp =>
       ? 'linear-gradient(90deg,#ffb340,#ffd166)'
       : 'linear-gradient(90deg,#ff3b3b,#ff7b6b)';
 
+// stance is stored as data ('orthodox' | 'southpaw'); this is its only display form
+const STANCE_LABEL = { orthodox: 'Orthodox', southpaw: 'Southpaw' };
+
 function setPlate(side, cfg) {
   const card = $(side === 'a' ? '#card-a' : '#card-b');
   card.querySelector('.flag').textContent = cfg.flag;
@@ -642,11 +646,11 @@ const TD_MOVES = new Set(['leg_sweep', 'sweeping_kick', 'backflip_kick']); // co
 const fmtCtrl = sec => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`;
 
 // ---------- autochess mode ----------
-// Entirely additive: `tft` stays null until the mode is entered, and every
+// Entirely additive: `autochessMode` stays null until the mode is entered, and every
 // hook below no-ops while it is. Auto-sim and control keep their exact paths.
-let tftMode = null;   // AutochessMode instance
-let tftUi = null;
-let tftActive = false;
+let autochessMode = null;   // AutochessMode instance
+let autochessUi = null;
+let autochessActive = false;
 let selectedMode = 'auto'; // 'auto' | 'control' | 'autochess'
 let loadedAssets = null;   // { models, clipSets, overlayDeltas } — set once loading finishes
 let octagonRoot = null;    // the octagon GLB, hidden while the autochess cage is up
@@ -679,11 +683,11 @@ function ctlFlashStam() {
 
 function ctlStrike(slot) {
   if (!ctlActive()) return;
-  const key = fighterA.cfg.kit?.[slot];
+  const move = fighterA.cfg.kit?.[slot];
   const cost = CTL_COST[slot];
-  if (!key) return;
+  if (!move) return;
   if (ctlStam < cost) return ctlFlashStam();
-  if (engine.playerStrike(key)) ctlStam -= cost;
+  if (engine.playerStrike(move)) ctlStam -= cost;
 }
 
 function ctlDodge() {
@@ -764,7 +768,7 @@ function setupBroadcast() {
     $(`#sbName${suf}`).textContent = f.cfg.name.toUpperCase();
     $(`#sbTag${suf}`).textContent = `“${f.cfg.nick.toUpperCase()}” · ${corner} CORNER`;
     $(`#ccName${suf}`).textContent = f.cfg.name.toUpperCase();
-    $(`#ccRec${suf}`).textContent = `${f.cfg.record || '0–0–0'} · ${f.cfg.stance || 'Orthodox'}`;
+    $(`#ccRec${suf}`).textContent = `${f.cfg.record || '0–0–0'} · ${STANCE_LABEL[f.cfg.stance]}`;
     $(`#ccStats${suf}`).innerHTML = statRowsHTML(f.cfg);
     const img = $(`#ccImg${suf}`);
     if (portraits[f.cfg.id]) { img.src = portraits[f.cfg.id]; img.style.display = ''; }
@@ -794,7 +798,7 @@ function renderStatSheet() {
   </div>`;
 }
 
-// tuned Monte-Carlo win rates vs the field (see config.js balance notes)
+// tuned Monte-Carlo win rates vs the field (see fighters/ balance notes)
 const RANK_WR = { soso: 54, gigi: 52, levan: 51, dato: 51, david: 50, ilia: 49, davit: 48, cotne: 48, merab: 46 };
 function renderRankings() {
   const ranked = [...FIGHTERS].sort((x, y) => (RANK_WR[y.id] || 50) - (RANK_WR[x.id] || 50));
@@ -986,7 +990,7 @@ function startMatch(idA, idB, seed = null) {
   setupBroadcast();
   updateNavTabs('fight');
   // ring announcer walk-out line (Soso's Buffer-style intro lives here)
-  for (const f of [fighterA, fighterB]) if (f.cfg.announce) fx.playAnnounce(f.cfg);
+  for (const f of [fighterA, fighterB]) if (f.cfg.voice.announce) fx.playAnnounce(f.cfg);
   fx.bell();
   fx.startMusic();
   engine.start();
@@ -1056,13 +1060,13 @@ function updateMenuPreview(changedSide = null) {
     f.faceToward(_lookOut.set(p.x * 0.25, 0, 9), 0, true);
     f.root.visible = true;
     if (side === changedSide) {
-      if (f.cfg.victoryClip !== f.cfg.builtin) {
-        f.play(f.cfg.victoryClip, { once: true, fade: 0.12, onDone: () => f.play(f.cfg.builtin, { fade: 0.4 }) });
+      if (f.cfg.visual.victory !== f.cfg.visual.idle) {
+        f.play(f.cfg.visual.victory, { once: true, fade: 0.12, onDone: () => f.play(f.cfg.visual.idle, { fade: 0.4 }) });
       } else {
-        f.play(f.cfg.builtin, { fade: 0.12 });
+        f.play(f.cfg.visual.idle, { fade: 0.12 });
       }
-    } else if (f.currentKey !== f.cfg.builtin && f.currentKey !== f.cfg.victoryClip) {
-      f.play(f.cfg.builtin, { fade: 0.25 });
+    } else if (f.currentKey !== f.cfg.visual.idle && f.currentKey !== f.cfg.visual.victory) {
+      f.play(f.cfg.visual.idle, { fade: 0.25 });
     }
   }
 }
@@ -1136,10 +1140,63 @@ function refreshMenu() {
     p.querySelector('.mpname').textContent = cfg.name.toUpperCase();
     p.querySelector('.mpnick').textContent = cfg.nick.toUpperCase();
     p.querySelector('.mpstat').textContent =
-      `STR ${cfg.stats.striking} · GRP ${cfg.stats.grappling} · SPD ${cfg.stats.speed} · CAR ${cfg.stats.cardio}`;
+      `STR ${cfg.stats.striking} · GRP ${cfg.stats.grappling} · SPD ${cfg.stats.speed} · CAR ${cfg.stats.cardio} · CHN ${cfg.stats.chin}`;
     p.querySelector('.mpready').classList.toggle('hidden', !(netConnected() && (side === 'A' ? readyA : readyB)));
     p.classList.toggle('active', activeSide === side);
+    renderFighterCard(cfg, $(side === 'A' ? '#fcA' : '#fcB'));
   }
+}
+
+
+// ---------- fighter detail card ----------
+// The move list is DERIVED, not authored: each move's w() is evaluated against
+// this fighter and normalised, so the panel always reflects what the sim will
+// actually throw.
+const moveDamage = m => m.impacts.reduce((s, i) => s + (i.min + i.max) / 2, 0);
+
+function fighterMoveset(cfg) {
+  const rows = MOVES.map(m => ({ m, w: m.w(cfg) })).filter(r => r.w > 0);
+  const total = rows.reduce((s, r) => s + r.w, 0);
+  return rows.map(r => ({ ...r, share: 100 * r.w / total })).sort((a, b) => b.share - a.share);
+}
+
+function fighterTraits(cfg) {
+  const t = [];
+  if (cfg.counterSkill >= 0.4) t.push('Elite counter-striker');
+  else if (cfg.counterSkill >= 0.28) t.push('Counters well');
+  else if (cfg.counterSkill <= 0.15) t.push('Rarely counters');
+  if (cfg.powerKO >= 3) t.push('One-punch knockout power');
+  else if (cfg.powerKO >= 1.5) t.push('Real finishing pop');
+  return t;
+}
+
+function renderFighterCard(cfg, target) {
+  const kit = Object.entries(cfg.kit).map(([slot, m]) => `<li><b>${slot}</b>${m.label}</li>`).join('');
+  const set = fighterMoveset(cfg);
+  // bars are scaled to the fighter's most-thrown move, not to 100% — the top
+  // share is ~20%, so a percent-of-100 bar renders every row as a sliver
+  const top = set[0]?.share || 1;
+  const moves = set.map(r => `
+    <tr>
+      <td class="fcM">${r.m.label}${r.m.heavy ? '<em>heavy</em>' : ''}</td>
+      <td class="fcS"><i style="width:${(100 * r.share / top).toFixed(1)}%"></i></td>
+      <td class="fcP">${r.share.toFixed(1)}%</td>
+      <td class="fcD">${moveDamage(r.m).toFixed(1)}</td>
+      <td class="fcH">${r.m.impacts.length}</td>
+    </tr>`).join('');
+  const traits = fighterTraits(cfg);
+  target.innerHTML = `
+    <div class="fcHeader">
+      ${traits.length ? `<div class="fcTraits">${traits.map(t => `<span>${t}</span>`).join('')}</div>` : ''}
+      <div class="fcSect">Control kit · ${STANCE_LABEL[cfg.stance]}</div>
+      <ul class="fcKit">${kit}</ul>
+    </div>
+    <div class="fcBody">
+      <table class="fcMoves">
+        <thead><tr><th>Move</th><th colspan="2">Share</th><th>Dmg</th><th>Hits</th></tr></thead>
+        <tbody>${moves}</tbody>
+      </table>
+    </div>`;
 }
 
 // ---------- Multiplayer (PeerJS: DataChannel for the lobby, WebRTC voice) ----------
@@ -1233,7 +1290,7 @@ const netCallbacks = {
 function onNetMsg(d) {
   // autochess round traffic is handled by the mode's own state machine
   if (typeof d.t === 'string' && d.t.startsWith('ac-')) {
-    tftMode?.netMatch?.onMessage(d);
+    autochessMode?.netMatch?.onMessage(d);
     return;
   }
   switch (d.t) {
@@ -1522,23 +1579,23 @@ async function enterAutochess(online = null) {
     loadText.textContent = 'Still loading fighters…';
     return;
   }
-  if (!tftMode) {
-    tftMode = new AutochessMode({ scene, camera, assets: loadedAssets, fx, ui: null });
+  if (!autochessMode) {
+    autochessMode = new AutochessMode({ scene, camera, assets: loadedAssets, fx, ui: null });
     loadText.textContent = 'Loading the autochess cage…';
     $('#loading').classList.remove('hidden');
     try {
-      await tftMode.load((loaded, total) => {
+      await autochessMode.load((loaded, total) => {
         loadFill.style.width = `${Math.round((loaded / Math.max(1, total)) * 100)}%`;
       });
     } catch (err) {
       console.error(err);
       loadText.textContent = `Board failed to load — ${err?.message || err}`;
-      tftMode = null;
+      autochessMode = null;
       return;
     }
     $('#loading').classList.add('hidden');
-    tftUi = new AutochessUI($('#tftUi'), tftMode, { portraits });
-    tftMode.ui = tftUi;
+    autochessUi = new AutochessUI($('#autochessUi'), autochessMode, { portraits });
+    autochessMode.ui = autochessUi;
   }
 
   // park the octagon-mode fighters and chrome
@@ -1548,15 +1605,15 @@ async function enterAutochess(online = null) {
   for (const f of Object.values(fighters)) f.root.visible = false;
   octagonRoot.visible = false;
   menuOpen = false;
-  tftActive = true;
+  autochessActive = true;
   document.body.classList.remove('menuOpen');
-  document.body.classList.add('fighting', 'tftMode');
+  document.body.classList.add('fighting', 'autochessMode');
   $('#menu').classList.add('hidden');
   $('#broadcast').classList.add('hidden');
   $('#topbar').classList.add('hidden');
   $('#commentaryWrap').classList.add('hidden');
   $('#ctlPad').classList.add('hidden');
-  $('#tftUi').classList.remove('hidden');
+  $('#autochessUi').classList.remove('hidden');
   updateNavTabs('fight');
 
   userYaw = 0;
@@ -1564,21 +1621,21 @@ async function enterAutochess(online = null) {
   // online: hand the mode a transport. The host also opens the match, which is
   // the only message needed to agree a seed — every round after that is driven
   // by the board exchange itself.
-  tftMode.start(online ? { isHost: online.isHost, send: msg => net?.send(msg) } : null);
+  autochessMode.start(online ? { isHost: online.isHost, send: msg => net?.send(msg) } : null);
   if (online) {
-    if (online.isHost) tftMode.netMatch.start(online.seed);
-    else { tftMode.netMatch.seed = online.seed | 0; tftMode.netMatch.started = true; tftMode.netMatch.round = 1; }
+    if (online.isHost) autochessMode.netMatch.start(online.seed);
+    else { autochessMode.netMatch.seed = online.seed | 0; autochessMode.netMatch.started = true; autochessMode.netMatch.round = 1; }
   }
-  window.__tft = tftMode;
+  window.__autochess = autochessMode;
 }
 
 function exitAutochess() {
-  if (!tftActive) return;
-  tftActive = false;
-  tftMode?.stop();
+  if (!autochessActive) return;
+  autochessActive = false;
+  autochessMode?.stop();
   octagonRoot.visible = true;
-  document.body.classList.remove('tftMode');
-  $('#tftUi').classList.add('hidden');
+  document.body.classList.remove('autochessMode');
+  $('#autochessUi').classList.add('hidden');
   $('#topbar').classList.remove('hidden');
   $('#commentaryWrap').classList.remove('hidden');
 }
@@ -1683,8 +1740,8 @@ loadAssets(FIGHTERS, (loaded, total) => {
   FIGHTERS.forEach((cfg, i) => {
     const f = new Fighter3D(cfg, scene, {
       model: models[i],
-      clips: clipSets[cfg.rig],
-      bindDelta: overlayDeltas[cfg.rig],
+      clips: clipSets[cfg.visual.rig],
+      bindDelta: overlayDeltas[cfg.visual.rig],
       pos: new THREE.Vector3(i === 0 ? -1.1 : 1.1, 0, 0),
       corner: '#fff',
     });
@@ -1761,10 +1818,10 @@ canvas.addEventListener('dblclick', () => { userYaw = 0; userY = 0; }); // doubl
 // fighter up. Distinguished from a camera drag by movement threshold, so
 // orbiting the board never fires a placement.
 const _ndc = new THREE.Vector2();
-let tftDownX = 0, tftDownY = 0, tftDragged = false;
+let autochessDownX = 0, autochessDownY = 0, autochessDragged = false;
 
-function tftCellFromEvent(e) {
-  if (!tftActive || !tftMode?.board?.loaded) return null;
+function autochessCellFromEvent(e) {
+  if (!autochessActive || !autochessMode?.board?.loaded) return null;
   // Normalise against the CANVAS RECT, not window.innerWidth/innerHeight.
   // Those only agree when the canvas exactly fills the viewport at (0,0), which
   // is false on iOS Safari: the collapsing URL bar leaves innerHeight
@@ -1777,37 +1834,37 @@ function tftCellFromEvent(e) {
     ((e.clientX - r.left) / r.width) * 2 - 1,
     -((e.clientY - r.top) / r.height) * 2 + 1,
   );
-  return tftMode.board.cellAtPointer(_ndc, camera);
+  return autochessMode.board.cellAtPointer(_ndc, camera);
 }
 
 canvas.addEventListener('pointerdown', e => {
-  if (!tftActive) return;
-  tftDownX = e.clientX;
-  tftDownY = e.clientY;
-  tftDragged = false;
+  if (!autochessActive) return;
+  autochessDownX = e.clientX;
+  autochessDownY = e.clientY;
+  autochessDragged = false;
 });
 
 // A finger never lands as cleanly as a mouse, so a 6px threshold read almost
 // every tap as a camera drag and swallowed the placement.
-const TFT_TAP_SLOP = matchMedia('(pointer: coarse)').matches ? 16 : 6;
+const AUTOCHESS_TAP_SLOP = matchMedia('(pointer: coarse)').matches ? 16 : 6;
 
 canvas.addEventListener('pointermove', e => {
-  if (!tftActive) return;
-  if (Math.abs(e.clientX - tftDownX) + Math.abs(e.clientY - tftDownY) > TFT_TAP_SLOP) tftDragged = true;
+  if (!autochessActive) return;
+  if (Math.abs(e.clientX - autochessDownX) + Math.abs(e.clientY - autochessDownY) > AUTOCHESS_TAP_SLOP) autochessDragged = true;
   if (camDragging) return;
-  const cell = tftCellFromEvent(e);
-  tftMode.setHover(cell ? tftCellId(cell.col, cell.row) : null);
+  const cell = autochessCellFromEvent(e);
+  autochessMode.setHover(cell ? autochessCellId(cell.col, cell.row) : null);
 });
 
 canvas.addEventListener('pointerup', e => {
-  if (!tftActive || tftDragged) return;
-  if (tftMode.phase !== TFT_PHASE.PLANNING) return;
-  const cell = tftCellFromEvent(e);
-  if (!cell) { tftMode.select(null); return; }
-  const id = tftCellId(cell.col, cell.row);
-  const occupant = tftMode.roster.at(id);
-  if (tftMode.selected) tftMode.place(tftMode.selected, id);
-  else if (occupant) tftMode.select(occupant);
+  if (!autochessActive || autochessDragged) return;
+  if (autochessMode.phase !== AUTOCHESS_PHASE.PLANNING) return;
+  const cell = autochessCellFromEvent(e);
+  if (!cell) { autochessMode.select(null); return; }
+  const id = autochessCellId(cell.col, cell.row);
+  const occupant = autochessMode.roster.at(id);
+  if (autochessMode.selected) autochessMode.place(autochessMode.selected, id);
+  else if (occupant) autochessMode.select(occupant);
 });
 
 renderer.setAnimationLoop(() => {
@@ -1835,12 +1892,12 @@ renderer.setAnimationLoop(() => {
     }
     // autochess runs on the same fixed quantum, so its battles resolve
     // identically regardless of frame rate
-    if (tftActive) tftMode.update(SIM_STEP);
+    if (autochessActive) autochessMode.update(SIM_STEP);
   }
 
-  if (tftActive) {
-    tftUi?.onTick?.(tftMode.phase, tftMode.timer);
-    tftUi?.updateFloaters(dt, camera, tftMode.board.unitRoot);
+  if (autochessActive) {
+    autochessUi?.onTick?.(autochessMode.phase, autochessMode.timer);
+    autochessUi?.updateFloaters(dt, camera, autochessMode.board.unitRoot);
   }
 
   if (ctlActive()) {
@@ -1849,7 +1906,7 @@ renderer.setAnimationLoop(() => {
     updateCtlPad();
   }
 
-  if (tftActive) {
+  if (autochessActive) {
     // Autochess uses a fixed high-angle shot framing the whole board, like
     // TFT — no cinematic sway, because the player is reading hexes and needs
     // a stable frame. Drag still orbits/tilts; double-click recentres.
@@ -1869,7 +1926,7 @@ renderer.setAnimationLoop(() => {
     const yaw = userYaw * 0.6;
     camera.position.set(
       Math.sin(yaw) * Math.cos(pitch) * dist,
-      tftMode.board.floorY + Math.sin(pitch) * dist,
+      autochessMode.board.floorY + Math.sin(pitch) * dist,
       Math.cos(yaw) * Math.cos(pitch) * dist,
     );
     if (shake > 0.002) {
@@ -1877,9 +1934,9 @@ renderer.setAnimationLoop(() => {
       camera.position.y += (Math.random() - 0.5) * shake * 0.7;
       shake *= Math.exp(-5 * dt);
     }
-    camera.lookAt(0, tftMode.board.floorY + lookY, 0);
+    camera.lookAt(0, autochessMode.board.floorY + lookY, 0);
     faceFill.position.set(camera.position.x, camera.position.y + 1.2, camera.position.z);
-    faceFill.target.position.set(0, tftMode.board.floorY + 1.0, 0);
+    faceFill.target.position.set(0, autochessMode.board.floorY + 1.0, 0);
     renderer.render(scene, camera);
     return;
   }

@@ -1,0 +1,293 @@
+/* the old top plates are the MOBILE hud; desktop fights use the score band.
+   The compact branch also catches SHORT viewports (landscape phones report
+   >820px width but have no room for the full desktop chrome). */
+body.fighting #topbar { display: none; }
+@media (min-width: 821px) and (min-height: 501px) {
+  /* the feed replaces the commentary lower-third on the full desktop chrome */
+  body.fighting #commentaryWrap { display: none; }
+}
+@media (max-width: 820px), (max-height: 500px) {
+  #broadcast { grid-template-columns: 1fr; grid-template-areas: 'hdr'; padding-top: 6px; }
+  #matchTitleWrap { display: none; }
+  #scoreBand, .ccard, #feed { display: none; }
+  /* single scrollable row — wrapping to two rows would slide under the plates */
+  #matchControls {
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+  .bcBtn { font-size: 9.5px; padding: 0 10px; height: 27px; white-space: nowrap; flex: 0 0 auto; }
+  #speedSeg { flex: 0 0 auto; }
+  .speedBtn { height: 21px; padding: 0 8px; font-size: 9.5px; }
+  #bnavBrand { font-size: 11px; letter-spacing: 0.08em; }
+  #bnavBrand svg { width: 14px; height: 14px; }
+  .btab { font-size: 9.5px; padding: 5px 8px; letter-spacing: 0.06em; }
+  /* controls sit above the plates — plates drop below the single row */
+  body.fighting #topbar { display: flex; top: 78px; }
+  /* compact fight plates: the full-size versions ate half a phone screen */
+  .plate { width: 46vw; padding: 6px 8px 7px; }
+  .plast { font-size: 13px; }
+  .pfirst { font-size: 9px; letter-spacing: 1.8px; }
+  .nick { display: none; }
+  .flag { font-size: 13px; }
+  .hpwrap { height: 8px; margin: 6px 0 5px; }
+  .skill { margin: 2px 0; font-size: 9.5px; gap: 5px; letter-spacing: 1px; }
+  .skill span { width: 24px; font-size: 8.5px; }
+  .skill b { width: 15px; font-size: 9px; }
+  .sbar { height: 3px; }
+  #vsBadge { width: 32px; height: 32px; margin-top: 2px; }
+  #vsBadge span { font-size: 11px; }
+  #centerCol { margin-top: 6px; gap: 4px; }
+  #roundHud { padding: 2px 8px 2px; gap: 6px; }
+  #roundLabel { font-size: 10px; letter-spacing: 1.4px; }
+  #roundClock { font-size: 13px; letter-spacing: 1.6px; }
+  #commentary { font-size: 13px; padding: 5px 14px 6px 16px; border-left-width: 3px; }
+  #commentaryWrap { bottom: 86px; }
+  /* select screen: tighter tiles + slimmer chrome */
+  #menuTitle { font-size: 15px; letter-spacing: 1.5px; }
+  .rtile { width: 58px; }
+  .rtile img, .rtile .rflag { height: 52px; }
+  .rtile .rname { font-size: 8.5px; padding: 3px 2px 4px; }
+  #rosterBar { gap: 5px; padding: 10px 6px 3px; }
+  .mplate { padding: 5px 8px 6px; gap: 2px; }
+  .mpname { font-size: 14px; }
+  .mpnick { font-size: 8px; }
+  .netBtn { font-size: 10px; padding: 6px 10px 5px; letter-spacing: 1.4px; }
+  #netCodeInput { width: 64px; font-size: 16px; letter-spacing: 3px; padding: 5px 6px 4px; }
+  #menuFightBtn { padding: 11px 0 9px; font-size: 17px; letter-spacing: 4px; }
+  #menuHint { font-size: 9.5px; }
+}
+
+/* ---------- fighter plates ---------- */
+#topbar {
+  position: absolute;
+  top: 14px; left: 14px; right: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.plate {
+  position: relative;
+  width: min(340px, 34vw);
+  padding: 10px 16px 12px;
+  background: linear-gradient(160deg, var(--ink) 60%, var(--ink-soft));
+  backdrop-filter: blur(16px) saturate(1.3);
+  -webkit-backdrop-filter: blur(16px) saturate(1.3);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  overflow: hidden;
+  transition: box-shadow 0.3s ease;
+}
+.plate.blue { clip-path: polygon(0 0, 100% 0, calc(100% - 22px) 100%, 0 100%); }
+.plate.red  { clip-path: polygon(22px 0, 100% 0, 100% 100%, 0 100%); padding-left: 34px; }
+.plate::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+}
+.plate.blue::before { background: linear-gradient(90deg, var(--blue), transparent 85%); }
+.plate.red::before  { background: linear-gradient(270deg, var(--red-hot), transparent 85%); }
+.plate.red .plateHead { flex-direction: row-reverse; text-align: right; }
+.plate.red .names { align-items: flex-end; }
+
+.plateHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.flag { font-size: 22px; line-height: 1; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.6)); }
+.names { display: flex; flex-direction: column; min-width: 0; }
+.pfirst {
+  font-family: var(--anton);
+  font-size: 13px;
+  letter-spacing: 2.5px;
+  color: var(--text-dim);
+}
+.plast {
+  font-family: var(--anton);
+  font-size: 21px;
+  letter-spacing: 1.2px;
+  line-height: 1.05;
+  /* long surnames (PATCHUASHVILI) must shrink, not spill past the angled clip */
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.nick {
+  margin-left: auto;
+  font-family: var(--barlow);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: var(--gold);
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  padding: 2px 7px;
+  border-radius: 2px;
+  white-space: nowrap;
+}
+.plate.red .nick { margin-left: 0; margin-right: auto; }
+
+/* ---------- HP ---------- */
+.hpwrap {
+  position: relative;
+  height: 14px;
+  margin: 10px 0 8px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  transform: skewX(-14deg);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.hpghost {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.85);
+  transition: width 0.9s cubic-bezier(0.2, 0.7, 0.3, 1) 0.45s;
+}
+.hpfill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 100%;
+  background: linear-gradient(90deg, #2ee06a, #8ff0a0);
+  transition: width 0.18s ease-out;
+  box-shadow: inset 0 0 8px rgba(255, 255, 255, 0.25);
+}
+.hpfill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255,255,255,0.35), transparent 45%);
+}
+
+.plate.hurt { animation: hurtFlash 0.5s; }
+@keyframes hurtFlash {
+  30% { box-shadow: 0 0 30px rgba(255, 45, 45, 0.9), inset 0 0 30px rgba(255, 45, 45, 0.25); }
+}
+
+/* ---------- skills ---------- */
+.skill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 11.5px;
+  letter-spacing: 1.5px;
+  color: var(--text-dim);
+  margin: 3px 0;
+}
+.skill span { width: 34px; }
+.skill b { width: 22px; text-align: right; font-size: 11px; color: #fff; font-weight: 700; }
+.sbar { flex: 1; height: 4px; background: rgba(255, 255, 255, 0.08); transform: skewX(-14deg); overflow: hidden; }
+.sbar div { height: 100%; background: linear-gradient(90deg, var(--blue), #9fd0ff); }
+.plate.red .sbar div { background: linear-gradient(90deg, var(--red-hot), var(--gold-soft)); }
+
+/* ---------- VS badge / round HUD ---------- */
+#centerCol {
+  align-self: flex-start;
+  margin-top: 22px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  flex: 0 0 auto;
+}
+
+#roundHud {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  padding: 4px 13px 3px;
+  background: linear-gradient(160deg, var(--ink) 60%, var(--ink-soft));
+  border: 1px solid var(--line);
+  border-radius: 3px;
+}
+#roundLabel {
+  font-family: var(--anton);
+  font-size: 13px;
+  letter-spacing: 2px;
+  color: var(--gold);
+}
+#roundClock {
+  font-family: var(--anton);
+  font-size: 19px;
+  letter-spacing: 2.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+#roundCard {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  opacity: 0;
+  font-family: var(--anton);
+  font-style: italic;
+  font-size: clamp(60px, 10vw, 130px);
+  letter-spacing: 8px;
+  color: #fff;
+  text-shadow: 0 0 60px rgba(210, 10, 10, 0.85), 0 4px 18px rgba(0, 0, 0, 0.9);
+}
+#roundCard.show { animation: roundCard 1.7s ease forwards; }
+@keyframes roundCard {
+  0% { opacity: 0; transform: scale(1.45); }
+  20% { opacity: 1; transform: scale(1); }
+  72% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+#vsBadge {
+  width: 54px;
+  height: 54px;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(160deg, var(--red), #7d0505);
+  clip-path: polygon(30% 0, 70% 0, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0 70%, 0 30%);
+  box-shadow: 0 6px 24px rgba(210, 10, 10, 0.5);
+}
+#vsBadge span {
+  font-family: var(--anton);
+  font-size: 20px;
+  font-style: italic;
+  letter-spacing: 1px;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+}
+
+/* ---------- commentary lower third ---------- */
+#commentaryWrap {
+  position: absolute;
+  bottom: 118px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: min(760px, 86vw);
+  z-index: 10;
+}
+#commentary {
+  position: relative;
+  padding: 8px 26px 9px 30px;
+  background: linear-gradient(90deg, var(--ink), var(--ink-soft));
+  border-left: 4px solid var(--red-hot);
+  clip-path: polygon(0 0, 100% 0, calc(100% - 14px) 100%, 0 100%);
+  font-weight: 600;
+  font-size: 21px;
+  letter-spacing: 0.6px;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
+  min-height: 1em;
+}
+#commentary:empty { opacity: 0; }
+#commentary.pop { animation: pop 0.28s ease; }
+@keyframes pop {
+  0% { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}

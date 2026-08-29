@@ -9,7 +9,7 @@
 // Targets:
 //   * within a cost tier, units should sit close together
 //   * across tiers, win rate should climb with cost (that IS the cost ladder)
-const L = '../src/tft/';
+const L = '../src/modes/autochess/';
 const { Combat, CombatUnit, setCombatRng, ROUND_TIME } = await import(L + 'combat.js');
 const { UNITS, UNIT_BY_ID } = await import(L + 'units.js');
 const Hex = await import(L + 'hex.js');

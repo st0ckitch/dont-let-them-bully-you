@@ -1,0 +1,47 @@
+/* Autochess HUD.
+   Kept in its own sheet and scoped under #autochessUi so nothing here can reach the
+   auto-sim / control-mode broadcast chrome in style.css. */
+
+#autochessUi {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  pointer-events: none;
+  font-family: 'Barlow Condensed', 'Geist', system-ui, sans-serif;
+  color: #e8eef7;
+  --panel: rgba(10, 17, 28, 0.86);
+  --edge: rgba(140, 170, 210, 0.22);
+  --gold: #f0c674;
+}
+
+#autochessUi.hidden { display: none; }
+#autochessUi button { pointer-events: auto; font-family: inherit; cursor: pointer; }
+
+/* Touch hardening. `manipulation` removes any double-tap-zoom tap delay on the
+   controls; the images inside cards and slots are made hit-transparent so a
+   tap targets the interactive element itself, and so iOS long-press cannot
+   open its save-image sheet mid-game. */
+#autochessUi button, .acCard, .acBenchSlot, .acDetail, .acBench, .acCards {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.acCard img, .acBenchSlot img, .acDetail img, .acFoe img {
+  pointer-events: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* The octagon-mode broadcast chrome is laid out by ID selectors in style.css,
+   which outrank a `.hidden` class — so autochess suppresses it from the body
+   class instead of fighting specificity element by element. */
+body.autochessMode #topbar,
+body.autochessMode #commentaryWrap,
+body.autochessMode #broadcast,
+body.autochessMode #roundCard,
+body.autochessMode #ctlPad,
+body.autochessMode #banner,
+body.autochessMode #feed,
+body.autochessMode #gameMicBtn {
+  display: none !important;
+}

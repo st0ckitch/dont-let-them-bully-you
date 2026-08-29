@@ -1,0 +1,52 @@
+@font-face {
+  font-family: 'Anton';
+  src: url('../../assets/fonts/Anton-400.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Barlow Condensed';
+  src: url('../../assets/fonts/BarlowCondensed-400.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Barlow Condensed';
+  src: url('../../assets/fonts/BarlowCondensed-600.woff2') format('woff2');
+  font-weight: 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Barlow Condensed';
+  src: url('../../assets/fonts/BarlowCondensed-700.woff2') format('woff2');
+  font-weight: 700;
+  font-display: swap;
+}
+
+:root {
+  --red: #d20a0a;
+  --red-hot: #ff2d2d;
+  --gold: #d4af37;
+  --gold-soft: #f0cc60;
+  --blue: #2f6bff;
+  --ink: rgba(9, 10, 15, 0.82);
+  --ink-soft: rgba(16, 18, 26, 0.66);
+  --line: rgba(255, 255, 255, 0.14);
+  --text-dim: #aab2c4;
+  --anton: 'Anton', 'Arial Black', sans-serif;
+  --barlow: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  background: #07070c;
+  font-family: var(--barlow);
+  color: #fff;
+}
+
+#scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+
+#ui { position: fixed; inset: 0; pointer-events: none; }

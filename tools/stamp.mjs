@@ -20,7 +20,7 @@ const STAMP = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate()
 const HUMAN = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
 
 const jsFiles = [];
-for (const dir of ['src', 'src/tft', 'vendor', 'vendor/utils']) {
+for (const dir of ['src', 'src/moves', 'src/fighters', 'src/modes/octagon', 'src/modes/autochess', 'vendor', 'vendor/utils']) {
   const abs = path.join(ROOT, dir);
   if (!fs.existsSync(abs)) continue;
   for (const f of fs.readdirSync(abs)) if (f.endsWith('.js')) jsFiles.push(path.join(abs, f));

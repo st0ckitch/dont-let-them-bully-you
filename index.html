@@ -10,8 +10,20 @@
   <link rel="preconnect" href="https://api.fontshare.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;600;800;900&display=swap" />
   <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=satoshi@400,600,700,800&display=swap" />
-  <link rel="stylesheet" href="./src/style.css?v=202608281148" />
-  <link rel="stylesheet" href="./src/tft/tft.css?v=202608281148" />
+  <link rel="stylesheet" href="./src/styles/tokens.css?v=202608281148" />
+  <link rel="stylesheet" href="./src/styles/broadcast.css?v=202608281148" />
+  <link rel="stylesheet" href="./src/styles/sheets.css?v=202608281148" />
+  <link rel="stylesheet" href="./src/styles/hud.css?v=202608281148" />
+  <link rel="stylesheet" href="./src/styles/menu.css?v=202608281148" />
+  <link rel="stylesheet" href="./src/styles/lobby.css?v=202608281148" />
+  <link rel="stylesheet" href="./src/styles/banner.css?v=202608281148" />
+  <link rel="stylesheet" href="./src/styles/responsive.css?v=202608281148" />
+  <link rel="stylesheet" href="./src/styles/fighter-card.css?v=202608281148" />
+  <!-- autochess: scoped under #autochessUi, loaded after core so it wins on shared tokens -->
+  <link rel="stylesheet" href="./src/modes/autochess/styles/base.css?v=202608281148" />
+  <link rel="stylesheet" href="./src/modes/autochess/styles/panels.css?v=202608281148" />
+  <link rel="stylesheet" href="./src/modes/autochess/styles/shop.css?v=202608281148" />
+  <link rel="stylesheet" href="./src/modes/autochess/styles/responsive.css?v=202608281148" />
   <script type="importmap">
     { "imports": { "three": "./vendor/three.module.js?v=202608281148" } }
   </script>
@@ -172,6 +184,7 @@
     <div id="menu" class="hidden">
       <div id="menuTitle">CHOOSE YOUR FIGHTERS</div>
       <div id="menuPlates">
+        <div class="mpcol mpcolA">
         <button class="mplate mpblue active" id="mplateA">
           <span class="mpside">BLUE CORNER</span>
           <span class="mpname"></span>
@@ -179,7 +192,10 @@
           <span class="mpstat"></span>
           <span class="mpready hidden">READY ✓</span>
         </button>
+        <div class="fcSide" id="fcA"></div>
+        </div>
         <div class="mvs">VS</div>
+        <div class="mpcol mpcolB">
         <button class="mplate mpred" id="mplateB">
           <span class="mpside">RED CORNER</span>
           <span class="mpname"></span>
@@ -187,6 +203,8 @@
           <span class="mpstat"></span>
           <span class="mpready hidden">READY ✓</span>
         </button>
+        <div class="fcSide" id="fcB"></div>
+        </div>
       </div>
       <div id="menuSpacer"></div>
       <div id="menuBottom">
@@ -213,7 +231,7 @@
         <div id="menuHint">3 rounds × 30 seconds — win by KO, flash KO, or the judges' scorecards</div>
       </div>
     </div>
-    <div id="tftUi" class="hidden"></div>
+    <div id="autochessUi" class="hidden"></div>
     <div id="loading">
       <div id="loadTitle"><em>FLICK</em> <span>·</span> <em>MMA</em></div>
       <div id="loadBar"><div id="loadFill"></div></div>

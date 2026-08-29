@@ -1,0 +1,157 @@
+/* ---------- tablets / short desktop ---------- */
+@media (max-width: 1100px) and (min-width: 701px) {
+  .acCard { width: 104px; flex: 0 0 104px; }
+  .acCardNick, .acCardAbil { display: none; }
+  .acBenchSlot { width: 48px; height: 48px; flex: 0 0 48px; }
+  .acRail { width: 184px; top: 76px; }
+  .acRight { width: 164px; }
+  .acDetBlurb { display: none; }
+  .acReady { bottom: 186px; right: 10px; padding: 10px 14px; font-size: 12px; }
+}
+
+/* ---------- phones ----------
+   The desktop layout is two vertical columns flanking the board, which cannot
+   fit a 375px viewport — the shop alone is 668px wide. On phones the rail
+   becomes a horizontal status strip, the opponent collapses to a compact card,
+   and the shop stretches edge to edge with five slimmed cards. */
+@media (max-width: 700px) {
+  .acTop { top: 44px; padding: 3px 14px 5px; min-width: 132px; gap: 2px; }
+  .acStage { font-size: 20px; }
+  .acPhase { font-size: 9px; }
+
+  /* status rail -> horizontal strip pinned under the nav */
+  .acRail {
+    left: 6px; right: 6px; top: 102px;
+    width: auto; max-height: none;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 5px;
+  }
+  .acRail > div { padding: 5px 7px; flex: 1 1 0; min-width: 0; }
+  .acHp { flex: 0 0 62px; align-items: baseline; }
+  .acHpVal { font-size: 20px; }
+  .acHpLbl { font-size: 8px; }
+  .acLvlTop b { font-size: 13px; }
+  .acLvlTop span, .acXpTxt { font-size: 8px; }
+  .acXpBar { margin: 3px 0 2px; }
+  .acCapTop b { font-size: 18px; }
+  .acCapTop i { font-size: 11px; }
+  .acCapLbl, .acCapHint { display: none; }
+  .acCapPips { margin: 3px 0 0; gap: 2px; }
+  .acCapPips span { width: 6px; height: 6px; }
+  .acStreak { display: none; }
+
+  /* opponent: compact card under the strip, on the right */
+  .acRight { top: 156px; right: 6px; width: 132px; gap: 5px; }
+  .acFoe, .acMeter { padding: 5px 6px 6px; }
+  .acMeterHead span, .acFoeHead span { font-size: 8px; letter-spacing: 1px; }
+  .acMeterTabs button { font-size: 8px; padding: 2px 0; }
+  .acMeterRow { grid-template-columns: 18px 1fr auto; gap: 4px; }
+  .acMeterName, .acMeterVal { font-size: 8px; }
+  .acFoeHead span { font-size: 8px; letter-spacing: 1px; }
+  .acFoeHead b { font-size: 15px; }
+  .acFoeSub { font-size: 7px; margin-bottom: 4px; }
+  .acFoeList { gap: 2px; }
+  .acFoeRow { grid-template-columns: 18px 1fr auto; gap: 4px; }
+  .acFoePic { width: 18px; height: 18px; border-radius: 4px; }
+  .acFoeName { font-size: 8px; }
+  .acFoeHp { font-size: 8px; }
+  .acFoeHint { display: none; }
+
+  /* Inspector: a COMPACT BAR in the gap between the board and the bench, not a
+     sheet over the board. As a sheet it covered the whole player half and ate
+     every tap meant for a hex — elementsFromPoint returned .acDetail, never the
+     canvas — so placing a unit on a phone was simply impossible. Tap the bar to
+     expand it into the full card when you actually want the stats. */
+  .acRail > .acDetail {
+    position: fixed;
+    left: 5px; right: 5px;
+    bottom: 214px;
+    width: auto;
+    z-index: 6;
+    padding: 5px 7px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    cursor: pointer;
+  }
+  .acDetBlurb, .acDetStats, .acDetAbil { display: none; }
+  .acDetHead { flex: 1 1 auto; min-width: 0; gap: 7px; }
+  .acDetArt { width: 30px; height: 30px; border-radius: 5px; }
+  .acDetName { font-size: 13px; }
+  .acDetNick { display: none; }
+  .acDetTags { margin-top: 1px; }
+  .acDetTags span { font-size: 8px; }
+  .acSell { margin-top: 0; width: auto; flex: 0 0 auto; padding: 6px 9px; font-size: 11px; }
+  .acSell em { display: none; }
+  .acDetHint { margin-top: 0; font-size: 8px; flex: 0 0 auto; }
+  .acDetMore {
+    flex: 0 0 auto;
+    font-size: 14px;
+    opacity: 0.45;
+    padding: 0 2px;
+    transform: rotate(0deg);
+    transition: transform 0.15s;
+  }
+
+  /* expanded: the full card, deliberately over the board because the player
+     asked for it and one more tap puts it away */
+  .acRail > .acDetail.acDetOpen {
+    display: block;
+    bottom: 214px;
+    padding: 9px 11px 10px;
+  }
+  .acDetOpen .acDetStats { display: grid; grid-template-columns: 1fr 1fr; gap: 0 8px; }
+  .acDetOpen .acDetAbil { display: block; }
+  .acDetOpen .acDetNick { display: block; }
+  .acDetOpen .acSell { width: 100%; margin-top: 8px; }
+  .acDetOpen .acDetMore { transform: rotate(180deg); }
+
+  /* bottom cluster: one full-width column */
+  .acBottom {
+    left: 5px; right: 5px; bottom: 5px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 5px;
+  }
+  .acShopSide { flex-direction: row; width: auto; flex: 0 0 auto; order: 1; gap: 5px; }
+  .acGold { flex: 0 0 72px; padding: 4px 7px; }
+  .acGold b { font-size: 17px; }
+  .acSideBtn { flex: 1 1 0; padding: 4px 6px; }
+  .acSideBtn b { font-size: 11px; }
+  .acSideBtn span { font-size: 8px; }
+
+  .acCardsWrap { order: 2; gap: 5px; }
+  .acBench { align-self: stretch; justify-content: space-between; gap: 3px; }
+  .acBenchSlot { width: auto; height: 38px; flex: 1 1 0; min-width: 0; border-radius: 6px; }
+  .acStars { font-size: 8px; }
+
+  .acCards { gap: 4px; }
+  .acCard { width: auto; flex: 1 1 0; min-width: 0; height: 92px; border-radius: 7px; }
+  .acCardArt { height: 46px; }
+  .acCardNick, .acCardAbil { display: none; }
+  .acCardName { font-size: 10px; letter-spacing: 0.3px; padding: 3px 4px 0; }
+  .acCardFoot { padding: 2px 4px 3px; }
+  .acCardFoot b { font-size: 11px; }
+  .acPips i { width: 5px; height: 5px; }
+
+  .acFreeze { padding: 5px 8px; }
+  .acFreeze b { font-size: 10px; }
+  .acFreeze span { display: none; }
+
+  .acReady { position: static; flex: 0 0 auto; padding: 7px 16px; font-size: 12px; letter-spacing: 1px; border-radius: 7px; }
+
+  .acBannerMain { font-size: 30px; }
+  .acBannerSub { font-size: 10px; }
+  .acToast { bottom: 264px; font-size: 12px; }
+  .acDmg { font-size: 13px; }
+  .acDmg.crit { font-size: 18px; }
+}
+
+/* landscape phones: very little vertical room, so tighten the stack */
+@media (max-width: 900px) and (max-height: 460px) {
+  .acTop { top: 40px; }
+  .acRail { top: 52px; }
+  .acRight { top: 108px; }
+  .acRail > .acDetail { bottom: 170px; }
+}
