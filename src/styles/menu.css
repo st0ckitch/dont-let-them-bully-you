@@ -75,8 +75,11 @@ body.menuOpen #topbar, body.menuOpen #commentaryWrap { display: none; }
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  width: min(940px, 96vw);
-  flex: 0 0 auto;
+  /* wide, so the two corner columns sit at the edges and leave the middle
+     clear — the picked fighters stand there in 3D */
+  width: min(1400px, 97vw);
+  flex: 0 1 auto;
+  min-height: 0;
 }
 .mplate {
   pointer-events: auto;

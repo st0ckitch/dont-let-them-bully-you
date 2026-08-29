@@ -1096,16 +1096,10 @@ function buildMenu(thumbs) {
     <button class="rtile" data-id="${c.id}" aria-label="${c.name}">
       ${thumbs[c.id] ? `<img src="${thumbs[c.id]}" alt="">` : `<span class="rflag">${c.flag}</span>`}
       <span class="rname">${c.short}</span>
-      <span class="rinfo" data-info="${c.id}" title="${c.name} details">i</span>
     </button>`).join('');
   document.querySelectorAll('.rtile').forEach(el =>
-    el.addEventListener('click', e => {
+    el.addEventListener('click', () => {
       const id = el.dataset.id;
-      if (e.target?.dataset?.info) {          // the "i" badge opens the card instead of picking
-        e.stopPropagation();
-        renderFighterCard(FIGHTERS.find(c => c.id === id));
-        return;
-      }
       if (net) {
         // online: you only ever pick your own corner, and picking un-readies you
         const other = mySide === 'A' ? selB : selA;
@@ -1146,19 +1140,18 @@ function refreshMenu() {
     p.querySelector('.mpname').textContent = cfg.name.toUpperCase();
     p.querySelector('.mpnick').textContent = cfg.nick.toUpperCase();
     p.querySelector('.mpstat').textContent =
-      `STR ${cfg.stats.striking} · GRP ${cfg.stats.grappling} · SPD ${cfg.stats.speed} · CAR ${cfg.stats.cardio}`;
+      `STR ${cfg.stats.striking} · GRP ${cfg.stats.grappling} · SPD ${cfg.stats.speed} · CAR ${cfg.stats.cardio} · CHN ${cfg.stats.chin}`;
     p.querySelector('.mpready').classList.toggle('hidden', !(netConnected() && (side === 'A' ? readyA : readyB)));
     p.classList.toggle('active', activeSide === side);
+    renderFighterCard(cfg, $(side === 'A' ? '#fcA' : '#fcB'));
   }
 }
 
 
 // ---------- fighter detail card ----------
 // The move list is DERIVED, not authored: each move's w() is evaluated against
-// this fighter and normalised, so the card always reflects what the sim will
-// actually throw. Bars are scaled 70-100, not 0-100 — the roster only spans
-// ~78-98 and a full-range bar renders every fighter identical.
-const STAT_FLOOR = 70;
+// this fighter and normalised, so the panel always reflects what the sim will
+// actually throw.
 const moveDamage = m => m.impacts.reduce((s, i) => s + (i.min + i.max) / 2, 0);
 
 function fighterMoveset(cfg) {
@@ -1177,37 +1170,33 @@ function fighterTraits(cfg) {
   return t;
 }
 
-function renderFighterCard(cfg) {
-  const S = cfg.stats;
-  const bar = v => `${Math.max(0, Math.min(100, (v - STAT_FLOOR) / (100 - STAT_FLOOR) * 100))}%`;
-  const stats = [['Striking', S.striking], ['Grappling', S.grappling], ['Cardio', S.cardio],
-                 ['Chin', S.chin], ['Speed', S.speed]];
+function renderFighterCard(cfg, target) {
   const kit = Object.entries(cfg.kit).map(([slot, m]) => `<li><b>${slot}</b>${m.label}</li>`).join('');
-  const moves = fighterMoveset(cfg).map(r => `
+  const set = fighterMoveset(cfg);
+  // bars are scaled to the fighter's most-thrown move, not to 100% — the top
+  // share is ~20%, so a percent-of-100 bar renders every row as a sliver
+  const top = set[0]?.share || 1;
+  const moves = set.map(r => `
     <tr>
       <td class="fcM">${r.m.label}${r.m.heavy ? '<em>heavy</em>' : ''}</td>
-      <td class="fcS"><i style="width:${r.share.toFixed(1)}%"></i><span>${r.share.toFixed(1)}%</span></td>
+      <td class="fcS"><i style="width:${(100 * r.share / top).toFixed(1)}%"></i></td>
+      <td class="fcP">${r.share.toFixed(1)}%</td>
       <td class="fcD">${moveDamage(r.m).toFixed(1)}</td>
       <td class="fcH">${r.m.impacts.length}</td>
     </tr>`).join('');
-  $('#fighterCard').innerHTML = `<div class="sheetCard fcCard">
-    <div class="fcHead">
-      ${portraits[cfg.id] ? `<img src="${portraits[cfg.id]}" alt="">` : `<span class="fcFlag">${cfg.flag}</span>`}
-      <div>
-        <div class="sheetTitle">${cfg.name.toUpperCase()}</div>
-        <div class="sheetSub">“${cfg.nick.toUpperCase()}” · ${cfg.record} · ${STANCE_LABEL[cfg.stance]}</div>
-      </div>
+  const traits = fighterTraits(cfg);
+  target.innerHTML = `
+    <div class="fcHeader">
+      ${traits.length ? `<div class="fcTraits">${traits.map(t => `<span>${t}</span>`).join('')}</div>` : ''}
+      <div class="fcSect">Control kit · ${STANCE_LABEL[cfg.stance]}</div>
+      <ul class="fcKit">${kit}</ul>
     </div>
-    <div class="fcBars">${stats.map(([k, v]) =>
-      `<div class="fcBar"><span>${k}</span><i><b style="width:${bar(v)}"></b></i><em>${v}</em></div>`).join('')}</div>
-    ${fighterTraits(cfg).length ? `<div class="fcTraits">${fighterTraits(cfg).map(t => `<span>${t}</span>`).join('')}</div>` : ''}
-    <div class="fcSect">Control kit</div>
-    <ul class="fcKit">${kit}</ul>
-    <div class="fcSect">Moveset <em>share · damage · hits</em></div>
-    <table class="fcMoves">${moves}</table>
-    <button class="sheetClose" data-close="fighterCard">CLOSE</button>
-  </div>`;
-  $('#fighterCard').classList.remove('hidden');
+    <div class="fcBody">
+      <table class="fcMoves">
+        <thead><tr><th>Move</th><th colspan="2">Share</th><th>Dmg</th><th>Hits</th></tr></thead>
+        <tbody>${moves}</tbody>
+      </table>
+    </div>`;
 }
 
 // ---------- Multiplayer (PeerJS: DataChannel for the lobby, WebRTC voice) ----------

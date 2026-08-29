@@ -1,57 +1,130 @@
-/* fighter detail card */
-.fcCard { width: min(520px, 94vw); }
-.fcHead { display: flex; gap: 12px; align-items: center; margin-bottom: 14px; }
-.fcHead img { width: 56px; height: 56px; border-radius: 8px; object-fit: cover; }
-.fcFlag { font-size: 34px; line-height: 1; }
-.fcHead .sheetTitle, .fcHead .sheetSub { text-align: left; }
+/* Fighter detail panel — one per corner, under its plate on the select screen.
+   Shows the kit and the derived moveset for whoever is picked in that corner. */
 
-.fcBars { display: grid; gap: 5px; margin-bottom: 12px; }
-.fcBar { display: grid; grid-template-columns: 74px 1fr 30px; gap: 9px; align-items: center; }
-.fcBar span { font: 700 10px/1 var(--bc-body); letter-spacing: .09em; text-transform: uppercase; opacity: .62; }
-.fcBar i { height: 6px; border-radius: 3px; background: rgba(255,255,255,.10); overflow: hidden; }
-.fcBar i b { display: block; height: 100%; background: linear-gradient(90deg, #4b7bff, #6ee7ff); }
-.fcBar em { font: 800 13px/1 var(--bc-display); font-variant-numeric: tabular-nums; font-style: normal; text-align: right; }
+/* ---------- the corner column ---------- */
+/* The two columns split the plates row evenly. Both rules below matter at every
+   size: without `flex: 1 1 0` the column shrinks to its content, and .mplate's
+   own `max-width: 42%` — written when the plate sat directly in the wide row —
+   then caps it at 42% of that shrunken column. Together those collapsed the
+   mobile plate to 65px and truncated every name to "MER...". */
+.mpcol {
+  display: flex; flex-direction: column; gap: 8px;
+  flex: 1 1 0; min-width: 0; min-height: 0;
+}
+.mpcol .mplate { max-width: none; width: 100%; min-width: 0; }
+/* fluid rather than a fixed size per breakpoint: the longest name in the
+   roster (COTNE PATCHUASHVILI) needs ~10.5 characters' worth more room than
+   the shortest, and a step at one width leaves it clipped just below it */
+.mpcol .mpname { font-size: clamp(10.5px, 3.3vw, 16px); }
 
-.fcTraits { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+/* ---------- the panel ---------- */
+/* Off by default and switched on only where it fits. The panel's height comes
+   from the viewport's, so a width-only query is the wrong test. The height
+   floor is where about five rows clear the header — below it the panel showed
+   one half-cut row, which reads worse than showing nothing. */
+.fcSide {
+  display: none;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  background: rgba(8, 11, 20, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 10px;
+  padding: 12px 13px 13px;
+  backdrop-filter: blur(7px);
+  pointer-events: auto;
+}
+
+/* header holds still, body scrolls — the kit and the column labels are what you
+   read the move list against, so they must not scroll away */
+.fcHeader { flex: 0 0 auto; }
+.fcBody {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+  border-top: 1px solid var(--bc-divider); margin-top: 9px;
+  /* fades the last row out at the boundary so a partly-visible row reads as
+     "keep scrolling" rather than as a clipped layout */
+  -webkit-mask-image: linear-gradient(#000 calc(100% - 22px), transparent);
+  mask-image: linear-gradient(#000 calc(100% - 22px), transparent);
+}
+
+/* ---------- header content ---------- */
+.fcTraits { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 9px; }
 .fcTraits span {
   font: 700 10px/1 var(--bc-body); letter-spacing: .07em; text-transform: uppercase;
-  padding: 5px 9px; border-radius: 999px; background: rgba(120,160,255,.13); color: #b9cdff;
+  padding: 5px 9px; border-radius: 999px; background: rgba(120, 160, 255, .13); color: #b9cdff;
 }
 
 .fcSect {
   font: 700 10px/1 var(--bc-body); letter-spacing: .12em; text-transform: uppercase;
-  opacity: .55; margin: 14px 0 7px; border-top: 1px solid var(--bc-divider); padding-top: 11px;
+  opacity: .55; margin: 9px 0 6px; border-top: 1px solid var(--bc-divider); padding-top: 8px;
 }
-.fcSect em { font-style: normal; float: right; opacity: .7; letter-spacing: .05em; }
 
-.fcKit { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
-.fcKit li { display: grid; grid-template-columns: 66px 1fr; font: 600 13px/1.5 var(--bc-body); }
+.fcKit { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 5px; }
+.fcKit li {
+  font: 600 12px/1 var(--bc-body); padding: 5px 8px; border-radius: 5px;
+  background: rgba(255, 255, 255, .05); border: 1px solid rgba(255, 255, 255, .07);
+}
 .fcKit b {
-  font: 700 10px/1.5 var(--bc-body); letter-spacing: .08em; text-transform: uppercase; opacity: .55;
+  font: 700 9px/1 var(--bc-body); letter-spacing: .08em; text-transform: uppercase;
+  opacity: .5; margin-right: 5px;
 }
 
-.fcMoves { width: 100%; border-collapse: collapse; }
+/* ---------- moveset table ---------- */
+/* `separate`, not `collapse`: Chrome ignores position:sticky on a th inside a
+   collapsed-border table, which silently kills the pinned column labels.
+   `fixed`: the column widths below must sum to 100% or DMG/HITS are cut off. */
+.fcMoves {
+  width: 100%; table-layout: fixed;
+  border-collapse: separate; border-spacing: 0;
+}
+.fcMoves thead th {
+  font: 700 9px/1 var(--bc-body); letter-spacing: .09em; text-transform: uppercase;
+  color: #7d8699; padding: 7px 0 6px; border: 0; text-align: left;
+  position: sticky; top: 0; z-index: 1; background: #0a0e17;
+}
+.fcMoves thead th:nth-child(n+3) { text-align: right; }
+.fcMoves tbody tr { border: 0; }
 .fcMoves td { padding: 4px 0; border: 0; font: 600 12px/1.4 var(--bc-body); text-align: left; }
-.fcMoves .fcM { width: 42%; }
+
+.fcMoves .fcM { width: 40%; }
+.fcMoves .fcS { width: 24%; padding-right: 8px; }
+.fcMoves .fcP { width: 14%; opacity: .55; }
+.fcMoves .fcD { width: 12%; }
+.fcMoves .fcH { width: 10%; opacity: .45; }
+
 .fcMoves .fcM em {
   font-style: normal; font-size: 9px; letter-spacing: .08em; text-transform: uppercase;
-  margin-left: 6px; padding: 2px 5px; border-radius: 3px; background: rgba(255,90,90,.18); color: #ff9e9e;
+  margin-left: 6px; padding: 2px 5px; border-radius: 3px;
+  background: rgba(255, 90, 90, .18); color: #ff9e9e;
 }
-.fcMoves .fcS { position: relative; width: 34%; padding-right: 10px; }
 .fcMoves .fcS i {
-  display: block; height: 5px; border-radius: 3px; background: rgba(255,255,255,.13);
-  background: linear-gradient(90deg, #4b7bff, #6ee7ff); min-width: 2px;
+  display: block; height: 6px; border-radius: 3px; min-width: 2px;
+  background: linear-gradient(90deg, #4b7bff, #6ee7ff);
 }
-.fcMoves .fcS span { font: 700 10px/1 var(--bc-body); opacity: .6; font-variant-numeric: tabular-nums; }
-.fcMoves .fcD, .fcMoves .fcH {
-  text-align: right; font-variant-numeric: tabular-nums; font-weight: 800; width: 12%;
+.fcMoves .fcP, .fcMoves .fcD, .fcMoves .fcH {
+  text-align: right; font-variant-numeric: tabular-nums;
 }
-.fcMoves .fcH { opacity: .5; }
+.fcMoves .fcD, .fcMoves .fcH { font-weight: 800; }
+.fcMoves .fcP { padding-right: 10px; }
+.fcMoves .fcD, .fcMoves thead th:nth-child(3) { padding-right: 12px; }
 
-.rtile { position: relative; }
-.rinfo {
-  position: absolute; top: 3px; right: 3px; width: 16px; height: 16px; border-radius: 50%;
-  display: grid; place-items: center; font: 800 10px/1 var(--bc-display);
-  background: rgba(10,14,24,.72); color: #cdd9f0; border: 1px solid rgba(255,255,255,.22);
+/* ---------- layout, only where the panel is on ---------- */
+/* The plates row takes all the height between the title and the bottom
+   controls, and the two corner columns stretch into it. VS stays between them
+   so it stays centred. Everything is in normal flow: absolutely positioning the
+   columns orphaned the VS badge and needed a hardcoded inset to avoid covering
+   the roster strip. */
+@media (min-width: 1000px) and (min-height: 860px) {
+  #menuPlates {
+    flex: 1 1 auto; min-height: 0; align-items: stretch;
+    width: min(1500px, 96vw);
+  }
+  #menuSpacer { flex: 0 0 0; }
+  .mpcol { flex: 0 0 clamp(215px, 20vw, 290px); }
+  .fcSide { display: flex; flex: 1 1 auto; }
+  .mpcol .mplate { flex: 0 0 auto; }
+  .mpcol .mpname { font-size: clamp(14px, 1.35vw, 19px); letter-spacing: 0; }
+  .mpcol .mpside { white-space: nowrap; font-size: 8px; }
+  .mpcol .mpnick { font-size: 10px; }
+  .mpcol .mpstat { font-size: 9px; line-height: 1.5; }
 }
-.rinfo:hover { background: #4b7bff; color: #fff; border-color: #4b7bff; }

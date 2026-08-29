@@ -28,7 +28,11 @@ class NoCacheHandler(SimpleHTTPRequestHandler):
         return super().send_head()
 
     def log_message(self, fmt, *args):
-        if "GET" in (args[0] if args else ""):
+        # log_error() routes here too, and passes an HTTPStatus as args[0] —
+        # `in` on a non-string raised TypeError and killed the request thread,
+        # so a single 404 printed a traceback instead of one line.
+        first = str(args[0]) if args else ""
+        if "GET" in first and "code 4" not in first:
             return  # keep the console readable during asset loads
         super().log_message(fmt, *args)
 
