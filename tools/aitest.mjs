@@ -3,7 +3,7 @@
 // Each metric below targets one of the observed complaints: the cast changing
 // every round, duplicate 1-star copies standing next to each other, boards that
 // are sometimes a single fighter, and star levels that appear from nowhere.
-const L = '../src/tft/';
+const L = '../src/modes/autochess/';
 const { AiOpponent, AI_TUNING } = await import(L + 'ai.js');
 const { Pool, boardCapacity } = await import(L + 'shop.js');
 const { UNIT_BY_ID } = await import(L + 'units.js');

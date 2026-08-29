@@ -1,4 +1,4 @@
-import * as H from '../src/tft/hex.js';
+import * as H from '../src/modes/autochess/hex.js';
 
 let fail = 0;
 const ok = (c, m) => { if (!c) { console.log('FAIL:', m); fail++; } };

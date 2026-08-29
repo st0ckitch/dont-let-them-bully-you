@@ -8,37 +8,37 @@ import { MeshoptDecoder } from '../vendor/meshopt_decoder.module.js?v=2026082811
 // up to 137° on hips/spine/thighs) — so clips are retargeted per rig family
 // with bind-delta correction, not just copied.
 const ANIM_FILES = {
-  punch_combo: 'assets/anim_punch_combo.glb',
-  roundhouse: 'assets/anim_roundhouse.glb',
-  run: 'assets/anim_running.glb',
-  victory_cheer: 'assets/anim_victory_cheer.glb',
-  dodge_counter: 'assets/anim_dodge_counter.glb',
-  flying_kick: 'assets/anim_flying_kick.glb',
-  chest_pound: 'assets/anim_chest_pound.glb',
-  flex: 'assets/anim_flex.glb',
-  hook: 'assets/anim_hook.glb',
-  knock_down: 'assets/anim_knock_down.glb',
-  punch_combo_2: 'assets/anim_punch_combo_2.glb',
-  punch_combo_4: 'assets/anim_punch_combo_4.glb',
-  backflip_kick: 'assets/anim_backflip_kick.glb',
-  counterstrike: 'assets/anim_counterstrike.glb',
-  double_kick: 'assets/anim_double_kick.glb',
-  jumping_punch: 'assets/anim_jumping_punch.glb',
-  lunge_spin_kick: 'assets/anim_lunge_spin_kick.glb',
-  knee_strike: 'assets/anim_knee_strike.glb',
-  elbow_strike: 'assets/anim_elbow_strike.glb',
-  lunge_roundhouse: 'assets/anim_lunge_roundhouse.glb',
-  spartan_kick: 'assets/anim_spartan_kick.glb',
-  sweeping_kick: 'assets/anim_sweeping_kick.glb',
-  kung_fu_punch: 'assets/anim_kung_fu_punch.glb',
-  high_kick: 'assets/anim_high_kick.glb',
-  punch_combo_3: 'assets/anim_punch_combo_3.glb',
-  punch_combo_5: 'assets/anim_punch_combo_5.glb',
-  backflip_hooks: 'assets/anim_backflip_hooks.glb',
-  rising_kick: 'assets/anim_rising_kick.glb',
-  turn_kick: 'assets/anim_turn_kick.glb',
-  muscle_flex: 'assets/anim_muscle_flex.glb',
-  leg_sweep: 'assets/anim_leg_sweep.glb',
+  punch_combo: 'assets/anim/punch_combo.glb',
+  roundhouse: 'assets/anim/roundhouse.glb',
+  run: 'assets/anim/running.glb',
+  victory_cheer: 'assets/anim/victory_cheer.glb',
+  dodge_counter: 'assets/anim/dodge_counter.glb',
+  flying_kick: 'assets/anim/flying_kick.glb',
+  chest_pound: 'assets/anim/chest_pound.glb',
+  flex: 'assets/anim/flex.glb',
+  hook: 'assets/anim/hook.glb',
+  knock_down: 'assets/anim/knock_down.glb',
+  punch_combo_2: 'assets/anim/punch_combo_2.glb',
+  punch_combo_4: 'assets/anim/punch_combo_4.glb',
+  backflip_kick: 'assets/anim/backflip_kick.glb',
+  counterstrike: 'assets/anim/counterstrike.glb',
+  double_kick: 'assets/anim/double_kick.glb',
+  jumping_punch: 'assets/anim/jumping_punch.glb',
+  lunge_spin_kick: 'assets/anim/lunge_spin_kick.glb',
+  knee_strike: 'assets/anim/knee_strike.glb',
+  elbow_strike: 'assets/anim/elbow_strike.glb',
+  lunge_roundhouse: 'assets/anim/lunge_roundhouse.glb',
+  spartan_kick: 'assets/anim/spartan_kick.glb',
+  sweeping_kick: 'assets/anim/sweeping_kick.glb',
+  kung_fu_punch: 'assets/anim/kung_fu_punch.glb',
+  high_kick: 'assets/anim/high_kick.glb',
+  punch_combo_3: 'assets/anim/punch_combo_3.glb',
+  punch_combo_5: 'assets/anim/punch_combo_5.glb',
+  backflip_hooks: 'assets/anim/backflip_hooks.glb',
+  rising_kick: 'assets/anim/rising_kick.glb',
+  turn_kick: 'assets/anim/turn_kick.glb',
+  muscle_flex: 'assets/anim/muscle_flex.glb',
+  leg_sweep: 'assets/anim/leg_sweep.glb',
 };
 
 // which rig family each clip was authored on (default: athletic)
@@ -55,9 +55,9 @@ const CLIP_SOURCE = {
 // too visible to tolerate bind-delta error.
 const FAMILY_NATIVE = {
   portrait: {
-    knock_down: 'assets/anim_knock_down_portrait.glb',
-    spartan_kick: 'assets/anim_spartan_kick_portrait.glb',
-    sweeping_kick: 'assets/anim_sweeping_kick_portrait.glb',
+    knock_down: 'assets/anim/knock_down_portrait.glb',
+    spartan_kick: 'assets/anim/spartan_kick_portrait.glb',
+    sweeping_kick: 'assets/anim/sweeping_kick_portrait.glb',
   },
 };
 
@@ -191,13 +191,13 @@ export async function loadAssets(cfgs, onProgress) {
   const loader = new GLTFLoader(manager);
   loader.setMeshoptDecoder(MeshoptDecoder); // assets are EXT_meshopt_compression packed
 
-  const bodyPromises = cfgs.map(c => loader.loadAsync(c.body));
+  const bodyPromises = cfgs.map(c => loader.loadAsync(c.visual.body));
   const animKeys = Object.keys(ANIM_FILES);
   const animPromises = animKeys.map(k => loader.loadAsync(ANIM_FILES[k]));
   const nativeSpecs = Object.entries(FAMILY_NATIVE).flatMap(([family, files]) =>
     Object.entries(files).map(([key, url]) => ({ family, key, url })));
   const nativePromises = nativeSpecs.map(s => loader.loadAsync(s.url));
-  const octagonPromise = loader.loadAsync('assets/octagon.glb');
+  const octagonPromise = loader.loadAsync('assets/arena/octagon.glb');
   // await together so the first rejection surfaces immediately
   const [bodies, anims, natives, octagonGltf] = await Promise.all([
     Promise.all(bodyPromises),
@@ -206,21 +206,21 @@ export async function loadAssets(cfgs, onProgress) {
     octagonPromise,
   ]);
 
-  const models = bodies.map((gltf, i) => prepareModel(gltf.scene, cfgs[i].height));
+  const models = bodies.map((gltf, i) => prepareModel(gltf.scene, cfgs[i].visual.height));
 
   // bind poses per rig family (merab = athletic reference, davit = portrait)
   const bindByFamily = {};
   cfgs.forEach((cfg, i) => {
-    if (!bindByFamily[cfg.rig]) bindByFamily[cfg.rig] = captureBind(models[i].scene);
+    if (!bindByFamily[cfg.visual.rig]) bindByFamily[cfg.visual.rig] = captureBind(models[i].scene);
   });
   const athleticBind = bindByFamily.athletic;
 
   // raw clips, tagged by source family
   const raw = {};
   bodies.forEach((gltf, i) => {
-    raw[cfgs[i].builtin] = {
-      clip: processClip(gltf.animations[0], cfgs[i].builtin),
-      family: cfgs[i].rig,
+    raw[cfgs[i].visual.idle] = {
+      clip: processClip(gltf.animations[0], cfgs[i].visual.idle),
+      family: cfgs[i].visual.rig,
     };
   });
   animKeys.forEach((k, i) => {

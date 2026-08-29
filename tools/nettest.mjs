@@ -2,7 +2,7 @@
 // then checks the two sides computed byte-identical results. A desync here is
 // invisible in normal play until the two players see different winners, so this
 // asserts on the whole resolution, not just the outcome.
-const L = '../src/tft/';
+const L = '../src/modes/autochess/';
 const { NetMatch, roundSeed, canonicalUnits } = await import(L + 'netmatch.js');
 const { Combat, CombatUnit, setCombatRng, ROUND_TIME, playerDamage } = await import(L + 'combat.js');
 const { UNIT_BY_ID, UNITS } = await import(L + 'units.js');

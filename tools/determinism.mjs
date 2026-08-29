@@ -2,7 +2,7 @@
 // the identical battle locally from a shared seed. That only works if combat.js
 // is bit-deterministic. This proves it, and pins down what the protocol must
 // guarantee (unit construction order).
-const L = '../src/tft/';
+const L = '../src/modes/autochess/';
 const { Combat, CombatUnit, setCombatRng, ROUND_TIME } = await import(L + 'combat.js');
 const { UNIT_BY_ID } = await import(L + 'units.js');
 const Hex = await import(L + 'hex.js');

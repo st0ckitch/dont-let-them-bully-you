@@ -206,7 +206,7 @@ export class Fighter3D {
     this.guardTarget = 0;
     // turn to the crowd/camera side — consumed by the victory branch in update()
     this.yawTarget = Math.atan2(0 - this.pos.x, 6 - this.pos.z);
-    this.play(this.cfg.victoryClip, { fade: 0.3 });
+    this.play(this.cfg.visual.victory, { fade: 0.3 });
   }
 
   reset() {

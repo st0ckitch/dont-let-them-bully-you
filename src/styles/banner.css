@@ -1,0 +1,107 @@
+/* ---------- banner ---------- */
+#banner {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: radial-gradient(circle, rgba(4, 6, 12, 0.25), rgba(4, 6, 12, 0.85));
+}
+#banner.hidden { display: none; }
+
+#bannerText {
+  font-family: var(--anton);
+  font-style: italic;
+  font-size: clamp(58px, 12vw, 150px);
+  letter-spacing: 4px;
+  animation: bannerIn 0.7s cubic-bezier(0.2, 1.6, 0.3, 1);
+}
+@keyframes bannerIn {
+  0% { transform: scale(0.15) rotate(-6deg); opacity: 0; }
+  100% { transform: scale(1) rotate(0); opacity: 1; }
+}
+#bannerSub {
+  font-weight: 600;
+  font-size: 21px;
+  letter-spacing: 2px;
+  color: #dfe4f0;
+  text-transform: uppercase;
+  text-shadow: 0 2px 8px #000;
+}
+
+.dmgpop {
+  position: absolute;
+  right: 18px; top: 34px;
+  font-family: var(--anton);
+  font-size: 26px;
+  color: var(--red-hot);
+  text-shadow: 0 2px 8px #000;
+  animation: dmgUp 0.9s ease-out forwards;
+  pointer-events: none;
+}
+.dmgpop.crit { font-size: 38px; color: var(--gold-soft); }
+@keyframes dmgUp {
+  0% { transform: translateY(0); opacity: 1; }
+  100% { transform: translateY(-34px); opacity: 0; }
+}
+
+#confetti { position: fixed; inset: 0; z-index: 35; pointer-events: none; overflow: hidden; }
+#confetti span {
+  position: fixed;
+  top: -6vh;
+  animation: confFall linear forwards;
+}
+@keyframes confFall {
+  to { transform: translateY(118vh) rotate(720deg); opacity: 0.9; }
+}
+
+/* ---------- loading ---------- */
+#loading {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  /* must swallow clicks — the nav beneath is live from first paint */
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  background: rgba(4, 6, 12, 0.92);
+  backdrop-filter: blur(6px);
+}
+#loading.hidden { display: none; }
+#loadTitle {
+  font-family: var(--anton);
+  font-style: italic;
+  font-size: clamp(34px, 7vw, 56px);
+  letter-spacing: 3px;
+}
+#loadTitle em { font-style: italic; }
+#loadTitle em:first-child { color: var(--blue); text-shadow: 0 0 34px rgba(47, 107, 255, 0.6); }
+#loadTitle em:last-child { color: var(--red-hot); text-shadow: 0 0 34px rgba(255, 45, 45, 0.6); }
+#loadTitle span { font-size: 0.5em; color: var(--gold); vertical-align: middle; padding: 0 6px; }
+#loadBar {
+  width: min(440px, 70vw);
+  height: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  transform: skewX(-14deg);
+  overflow: hidden;
+}
+#loadFill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--blue), var(--red-hot));
+  transition: width 0.25s ease;
+}
+#loadText {
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 2px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}

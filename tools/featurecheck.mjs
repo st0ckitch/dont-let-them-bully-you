@@ -36,7 +36,7 @@ const arrows = await page.evaluate(() => {
 const again = await page.evaluate(async () => {
   const m = window.__tft;
   m.econ.hp = 1; m.oppHp = 100;
-  const H = await import('/src/tft/hex.js?v=x');
+  const H = await import('/src/modes/autochess/hex.js?v=x');
   if (!m.roster.board.length) {
     const e = m.roster.bench[0] || m.roster.add('soso').entry;
     m.place(e, H.cellId(3, 6));

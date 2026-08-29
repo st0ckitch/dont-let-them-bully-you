@@ -1,0 +1,53 @@
+/* ---------- small screens ---------- */
+@media (max-width: 560px) {
+  .plate { width: 45vw; padding: 8px 10px 10px; }
+  #vsBadge { width: 38px; height: 38px; margin-top: 16px; }
+  #vsBadge span { font-size: 14px; }
+  .flag { font-size: 16px; }
+  .pfirst { font-size: 10px; }
+  .plast { font-size: 14px; }
+  .nick { display: none; }
+  .skill span { width: 28px; font-size: 10px; }
+  .skill b { width: 18px; }
+  #commentary { font-size: 16px; }
+
+  /* fighter select: slim plates, scrollable tile strip, FIGHT always
+     visible above the home indicator */
+  #menu { gap: 6px; }
+  #menuTitle { font-size: 17px; letter-spacing: 2px; }
+  #menuPlates { gap: 8px; }
+  .mplate { min-width: 0; flex: 1; padding: 7px 10px 8px; }
+  .mpname { font-size: 15px; }
+  .mpnick { font-size: 9px; letter-spacing: 1.4px; }
+  .mpstat { display: none; }
+  .mvs { font-size: 16px; }
+  #rosterBar { gap: 6px; max-width: 100vw; padding: 12px 6px 4px; }
+  .rtile { width: 64px; }
+  .rtile img, .rtile .rflag { height: 58px; }
+  .rtile .rflag { font-size: 26px; }
+  .rtile .rname { font-size: 9px; }
+  #menuBottom { gap: 8px; }
+  #menuFightBtn {
+    width: min(92vw, 360px);
+    padding: 13px 0 11px;
+    font-size: 20px;
+    letter-spacing: 5px;
+  }
+  #menuHint { font-size: 10px; text-align: center; }
+}
+
+/* landscape phones: shrink the chrome so the 3D preview keeps real height */
+@media (max-height: 450px) {
+  #menu { gap: 4px; }
+  #menuTitle { font-size: 15px; letter-spacing: 2px; }
+  .mplate { padding: 5px 10px 6px; gap: 1px; }
+  .mpname { font-size: 14px; }
+  .mpstat { display: none; }
+  #rosterBar { padding: 8px 6px 2px; }
+  .rtile { width: 56px; }
+  .rtile img, .rtile .rflag { height: 48px; }
+  .rtile .rname { font-size: 8px; }
+  #menuBottom { gap: 6px; }
+  #menuFightBtn { padding: 8px 40px 7px 46px; font-size: 16px; letter-spacing: 4px; }
+  #menuHint { display: none; }
+}

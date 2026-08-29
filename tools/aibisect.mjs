@@ -1,5 +1,5 @@
 // Which AI change hurt? Run gametest's core loop under config toggles.
-const L = '../src/tft/';
+const L = '../src/modes/autochess/';
 const { Combat, CombatUnit, setCombatRng, ROUND_TIME, playerDamage } = await import(L + 'combat.js');
 const { UNIT_BY_ID } = await import(L + 'units.js');
 const { Pool, Roster, Economy, SHOP_SIZE, REROLL_COST, XP_COST, XP_PER_ROUND, boardCapacity } = await import(L + 'shop.js');

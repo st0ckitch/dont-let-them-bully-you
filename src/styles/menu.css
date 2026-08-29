@@ -1,0 +1,199 @@
+/* ---------- buttons ---------- */
+#menuFightBtn, #rematchBtn, #changeBtn {
+  pointer-events: auto;
+  font-family: var(--anton);
+  letter-spacing: 6px;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  clip-path: polygon(14px 0, 100% 0, calc(100% - 14px) 100%, 0 100%);
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+#menuFightBtn {
+  padding: 18px 64px 16px 70px;
+  font-size: 26px;
+  background: linear-gradient(160deg, var(--red-hot), #8e0606);
+  box-shadow: 0 10px 40px rgba(210, 10, 10, 0.55);
+  animation: pulse 2.2s ease-in-out infinite;
+}
+@keyframes pulse {
+  50% { box-shadow: 0 10px 56px rgba(255, 45, 45, 0.8); }
+}
+#menuFightBtn:hover, #rematchBtn:hover, #changeBtn:hover { transform: scale(1.05); filter: brightness(1.12); }
+
+#bannerBtns { display: flex; gap: 14px; margin-top: 12px; }
+#rematchBtn {
+  padding: 13px 44px 11px 50px;
+  font-size: 17px;
+  letter-spacing: 4px;
+  color: #1a1405;
+  background: linear-gradient(160deg, var(--gold-soft), var(--gold));
+  box-shadow: 0 8px 30px rgba(212, 175, 55, 0.45);
+}
+#changeBtn {
+  padding: 13px 36px 11px 42px;
+  font-size: 17px;
+  letter-spacing: 3px;
+  color: #dfe4f0;
+  background: linear-gradient(160deg, #2a2f3d, #171b26);
+  border: 1px solid var(--line);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+/* ---------- fighter select menu (MK-style, live 3D preview) ---------- */
+/* The center of the overlay is transparent: the two picked fighters stand in
+   the octagon behind it. Only the top (title/plates) and bottom (roster strip)
+   bands darken the scene. */
+#menu {
+  position: absolute;
+  inset: 0;
+  z-index: 38;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  /* top clears the fixed broadcast nav */
+  padding: max(48px, calc(env(safe-area-inset-top) + 36px)) 12px max(10px, env(safe-area-inset-bottom));
+  background: linear-gradient(180deg,
+    rgba(4, 6, 12, 0.92) 0%, rgba(4, 6, 12, 0.55) 14%, rgba(4, 6, 12, 0.08) 30%,
+    rgba(4, 6, 12, 0.02) 52%, rgba(4, 6, 12, 0.6) 72%, rgba(4, 6, 12, 0.95) 100%);
+  pointer-events: auto;
+}
+#menu.hidden { display: none; }
+/* the fight HUD behind the transparent middle is noise during selection */
+body.menuOpen #topbar, body.menuOpen #commentaryWrap { display: none; }
+#menuTitle {
+  flex: 0 0 auto;
+  font-family: var(--anton);
+  font-style: italic;
+  font-size: clamp(20px, 4vw, 38px);
+  letter-spacing: 4px;
+  text-shadow: 0 0 34px rgba(210, 10, 10, 0.45);
+}
+#menuPlates {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  width: min(940px, 96vw);
+  flex: 0 0 auto;
+}
+.mplate {
+  pointer-events: auto;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 200px;
+  max-width: 42%;
+  padding: 10px 18px 12px;
+  background: linear-gradient(160deg, var(--ink) 60%, var(--ink-soft));
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+  font-family: var(--barlow);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.mpblue { align-items: flex-start; text-align: left; clip-path: polygon(0 0, 100% 0, calc(100% - 18px) 100%, 0 100%); }
+.mpred { align-items: flex-end; text-align: right; clip-path: polygon(18px 0, 100% 0, 100% 100%, 0 100%); }
+.mplate::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+.mpblue::before { background: linear-gradient(90deg, var(--blue), transparent 85%); }
+.mpred::before { background: linear-gradient(270deg, var(--red-hot), transparent 85%); }
+.mpside { font-weight: 700; font-size: 11px; letter-spacing: 3px; }
+.mpblue .mpside { color: #7ea2ff; }
+.mpred .mpside { color: #ff8089; }
+.mpname {
+  font-family: var(--anton);
+  font-size: clamp(18px, 3.2vw, 30px);
+  letter-spacing: 1.5px;
+  line-height: 1.05;
+  /* PATCHUASHVILI-length names must shrink, not spill past the angled clip */
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mpnick { font-weight: 600; font-size: 11px; letter-spacing: 2px; color: var(--gold); }
+.mpstat { font-weight: 600; font-size: 11px; letter-spacing: 1px; color: var(--text-dim); }
+.mplate.active.mpblue { border-color: var(--blue); box-shadow: 0 0 26px rgba(47, 107, 255, 0.5); }
+.mplate.active.mpred { border-color: var(--red-hot); box-shadow: 0 0 26px rgba(255, 45, 45, 0.5); }
+.mvs {
+  align-self: center;
+  font-family: var(--anton);
+  font-style: italic;
+  font-size: 26px;
+  color: var(--gold);
+  flex: 0 0 auto;
+}
+#menuSpacer { flex: 1 1 auto; min-height: 0; }
+#menuBottom {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 auto;
+  width: 100%;
+}
+/* the MK roster strip: face tiles in one horizontal scrollable row */
+#rosterBar {
+  display: flex;
+  gap: 9px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  max-width: min(96vw, 900px);
+  padding: 14px 8px 6px; /* headroom for the hover lift */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+#rosterBar::-webkit-scrollbar { height: 5px; }
+#rosterBar::-webkit-scrollbar-track { background: transparent; }
+#rosterBar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.22); border-radius: 3px; }
+.rtile {
+  position: relative;
+  flex: 0 0 auto;
+  width: 82px;
+  padding: 0;
+  background: linear-gradient(160deg, var(--ink), var(--ink-soft));
+  border: 2px solid var(--line);
+  border-radius: 6px;
+  overflow: hidden;
+  cursor: pointer;
+  color: #fff;
+  transition: transform 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
+}
+.rtile:hover { transform: translateY(-4px); border-color: rgba(255, 255, 255, 0.45); }
+.rtile img, .rtile .rflag { width: 100%; height: 76px; object-fit: cover; display: block; }
+.rtile .rflag { display: flex; align-items: center; justify-content: center; font-size: 34px; }
+.rtile .rname {
+  display: block;
+  font-family: var(--anton);
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-align: center;
+  padding: 4px 2px 5px;
+  background: rgba(0, 0, 0, 0.35);
+}
+.rtile.selA { border-color: var(--blue); box-shadow: 0 0 16px rgba(47, 107, 255, 0.55); }
+.rtile.selB { border-color: var(--red-hot); box-shadow: 0 0 16px rgba(255, 45, 45, 0.55); }
+.rtile.selA::after, .rtile.selB::after {
+  position: absolute;
+  top: 3px;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  padding: 2px 5px;
+  border-radius: 2px;
+  color: #fff;
+}
+.rtile.selA::after { content: 'BLUE'; left: 3px; background: var(--blue); }
+.rtile.selB::after { content: 'RED'; right: 3px; background: var(--red-hot); }
+#menuHint {
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 1px;
+  color: var(--text-dim);
+}

@@ -1,0 +1,57 @@
+/* fighter detail card */
+.fcCard { width: min(520px, 94vw); }
+.fcHead { display: flex; gap: 12px; align-items: center; margin-bottom: 14px; }
+.fcHead img { width: 56px; height: 56px; border-radius: 8px; object-fit: cover; }
+.fcFlag { font-size: 34px; line-height: 1; }
+.fcHead .sheetTitle, .fcHead .sheetSub { text-align: left; }
+
+.fcBars { display: grid; gap: 5px; margin-bottom: 12px; }
+.fcBar { display: grid; grid-template-columns: 74px 1fr 30px; gap: 9px; align-items: center; }
+.fcBar span { font: 700 10px/1 var(--bc-body); letter-spacing: .09em; text-transform: uppercase; opacity: .62; }
+.fcBar i { height: 6px; border-radius: 3px; background: rgba(255,255,255,.10); overflow: hidden; }
+.fcBar i b { display: block; height: 100%; background: linear-gradient(90deg, #4b7bff, #6ee7ff); }
+.fcBar em { font: 800 13px/1 var(--bc-display); font-variant-numeric: tabular-nums; font-style: normal; text-align: right; }
+
+.fcTraits { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.fcTraits span {
+  font: 700 10px/1 var(--bc-body); letter-spacing: .07em; text-transform: uppercase;
+  padding: 5px 9px; border-radius: 999px; background: rgba(120,160,255,.13); color: #b9cdff;
+}
+
+.fcSect {
+  font: 700 10px/1 var(--bc-body); letter-spacing: .12em; text-transform: uppercase;
+  opacity: .55; margin: 14px 0 7px; border-top: 1px solid var(--bc-divider); padding-top: 11px;
+}
+.fcSect em { font-style: normal; float: right; opacity: .7; letter-spacing: .05em; }
+
+.fcKit { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.fcKit li { display: grid; grid-template-columns: 66px 1fr; font: 600 13px/1.5 var(--bc-body); }
+.fcKit b {
+  font: 700 10px/1.5 var(--bc-body); letter-spacing: .08em; text-transform: uppercase; opacity: .55;
+}
+
+.fcMoves { width: 100%; border-collapse: collapse; }
+.fcMoves td { padding: 4px 0; border: 0; font: 600 12px/1.4 var(--bc-body); text-align: left; }
+.fcMoves .fcM { width: 42%; }
+.fcMoves .fcM em {
+  font-style: normal; font-size: 9px; letter-spacing: .08em; text-transform: uppercase;
+  margin-left: 6px; padding: 2px 5px; border-radius: 3px; background: rgba(255,90,90,.18); color: #ff9e9e;
+}
+.fcMoves .fcS { position: relative; width: 34%; padding-right: 10px; }
+.fcMoves .fcS i {
+  display: block; height: 5px; border-radius: 3px; background: rgba(255,255,255,.13);
+  background: linear-gradient(90deg, #4b7bff, #6ee7ff); min-width: 2px;
+}
+.fcMoves .fcS span { font: 700 10px/1 var(--bc-body); opacity: .6; font-variant-numeric: tabular-nums; }
+.fcMoves .fcD, .fcMoves .fcH {
+  text-align: right; font-variant-numeric: tabular-nums; font-weight: 800; width: 12%;
+}
+.fcMoves .fcH { opacity: .5; }
+
+.rtile { position: relative; }
+.rinfo {
+  position: absolute; top: 3px; right: 3px; width: 16px; height: 16px; border-radius: 50%;
+  display: grid; place-items: center; font: 800 10px/1 var(--bc-display);
+  background: rgba(10,14,24,.72); color: #cdd9f0; border: 1px solid rgba(255,255,255,.22);
+}
+.rinfo:hover { background: #4b7bff; color: #fff; border-color: #4b7bff; }

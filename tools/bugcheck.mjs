@@ -1,4 +1,4 @@
-const L = '../src/tft/';
+const L = '../src/modes/autochess/';
 const { Pool, Roster } = await import(L + 'shop.js');
 const { POOL_COPIES } = await import(L + 'units.js');
 const { AiOpponent } = await import(L + 'ai.js');
