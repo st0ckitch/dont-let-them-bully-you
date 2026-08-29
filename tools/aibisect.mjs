@@ -1,11 +1,11 @@
 // Which AI change hurt? Run gametest's core loop under config toggles.
 const L = '../src/modes/autochess/';
-const { Combat, CombatUnit, setCombatRng, ROUND_TIME, playerDamage } = await import(L + 'combat.js');
-const { UNIT_BY_ID } = await import(L + 'units.js');
-const { Pool, Roster, Economy, SHOP_SIZE, REROLL_COST, XP_COST, XP_PER_ROUND, boardCapacity } = await import(L + 'shop.js');
-const AImod = await import(L + 'ai.js');
+const { Combat, CombatUnit, setCombatRng, ROUND_TIME, playerDamage } = await import(L + 'combat.ts');
+const { UNIT_BY_ID } = await import(L + 'units.ts');
+const { Pool, Roster, Economy, SHOP_SIZE, REROLL_COST, XP_COST, XP_PER_ROUND, boardCapacity } = await import(L + 'shop.ts');
+const AImod = await import(L + 'ai.ts');
 const { AiOpponent, AI_TUNING } = AImod;
-const Hex = await import(L + 'hex.js');
+const Hex = await import(L + 'hex.ts');
 const STEP = 1/60;
 const seeded = s0 => { let s = s0|0; return () => { s=(s+0x6D2B79F5)|0; let t=Math.imul(s^(s>>>15),1|s); t=(t+Math.imul(t^(t>>>7),61|t))^t; return ((t^(t>>>14))>>>0)/4294967296; }; };
 const FRONT=[[3,6],[2,6],[4,6],[1,6],[5,6],[0,6],[6,6]], BACK=[[3,7],[2,7],[4,7],[1,7],[5,7],[0,7],[6,7]];

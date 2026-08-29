@@ -4,9 +4,9 @@
 // every round, duplicate 1-star copies standing next to each other, boards that
 // are sometimes a single fighter, and star levels that appear from nowhere.
 const L = '../src/modes/autochess/';
-const { AiOpponent, AI_TUNING } = await import(L + 'ai.js');
-const { Pool, boardCapacity } = await import(L + 'shop.js');
-const { UNIT_BY_ID } = await import(L + 'units.js');
+const { AiOpponent, AI_TUNING } = await import(L + 'ai.ts');
+const { Pool, boardCapacity } = await import(L + 'shop.ts');
+const { UNIT_BY_ID } = await import(L + 'units.ts');
 
 const ROUNDS = 20;
 const GAMES = 300;

@@ -10,9 +10,9 @@
 //   * within a cost tier, units should sit close together
 //   * across tiers, win rate should climb with cost (that IS the cost ladder)
 const L = '../src/modes/autochess/';
-const { Combat, CombatUnit, setCombatRng, ROUND_TIME } = await import(L + 'combat.js');
-const { UNITS, UNIT_BY_ID } = await import(L + 'units.js');
-const Hex = await import(L + 'hex.js');
+const { Combat, CombatUnit, setCombatRng, ROUND_TIME } = await import(L + 'combat.ts');
+const { UNITS, UNIT_BY_ID } = await import(L + 'units.ts');
+const Hex = await import(L + 'hex.ts');
 
 const STEP = 1 / 60;
 const seeded = s0 => {

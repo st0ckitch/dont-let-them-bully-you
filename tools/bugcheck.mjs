@@ -1,7 +1,7 @@
 const L = '../src/modes/autochess/';
-const { Pool, Roster } = await import(L + 'shop.js');
-const { POOL_COPIES } = await import(L + 'units.js');
-const { AiOpponent } = await import(L + 'ai.js');
+const { Pool, Roster } = await import(L + 'shop.ts');
+const { POOL_COPIES } = await import(L + 'units.ts');
+const { AiOpponent } = await import(L + 'ai.ts');
 
 console.log('B2: does a 3rd copy complete a 3-star when you hold two 2-stars?');
 {

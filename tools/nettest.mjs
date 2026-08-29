@@ -3,10 +3,10 @@
 // invisible in normal play until the two players see different winners, so this
 // asserts on the whole resolution, not just the outcome.
 const L = '../src/modes/autochess/';
-const { NetMatch, roundSeed, canonicalUnits } = await import(L + 'netmatch.js');
-const { Combat, CombatUnit, setCombatRng, ROUND_TIME, playerDamage } = await import(L + 'combat.js');
-const { UNIT_BY_ID, UNITS } = await import(L + 'units.js');
-const Hex = await import(L + 'hex.js');
+const { NetMatch, roundSeed, canonicalUnits } = await import(L + 'netmatch.ts');
+const { Combat, CombatUnit, setCombatRng, ROUND_TIME, playerDamage } = await import(L + 'combat.ts');
+const { UNIT_BY_ID, UNITS } = await import(L + 'units.ts');
+const Hex = await import(L + 'hex.ts');
 
 const STEP = 1 / 60;
 const seeded = s0 => { let s = s0 | 0; return () => { s = (s + 0x6D2B79F5) | 0; let t = Math.imul(s ^ (s >>> 15), 1 | s); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; };

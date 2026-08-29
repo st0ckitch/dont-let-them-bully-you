@@ -2,8 +2,8 @@
 // fight.js is untouched, but its balance depends on Fighter3D's arena clamp
 // default, so re-run the Monte Carlo the project already used for tuning.
 const L = '../src/';
-const { simFight, setFightRng } = await import('../src/modes/octagon/fight.js');
-const { FIGHTERS } = await import('../src/fighters/index.js');
+const { simFight, setFightRng } = await import('../src/modes/octagon/fight.ts');
+const { FIGHTERS } = await import('../src/fighters/index.ts');
 setFightRng(null);
 const N = 3000;
 console.log(`simFight matrix, N=${N} per pairing (win% for the ROW fighter)\n`);

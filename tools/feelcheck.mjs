@@ -2,8 +2,8 @@
 // 4-cost must beat a 2-star 1-cost (TFT's tier feel), and a 1-star 5-cost
 // should beat a 2-star 2-cost.
 const L = '../src/modes/autochess/';
-const { Combat, CombatUnit, setCombatRng, ROUND_TIME } = await import(L + 'combat.js');
-const { UNIT_BY_ID } = await import(L + 'units.js');
+const { Combat, CombatUnit, setCombatRng, ROUND_TIME } = await import(L + 'combat.ts');
+const { UNIT_BY_ID } = await import(L + 'units.ts');
 const seeded = s0 => { let s = s0|0; return () => { s=(s+0x6D2B79F5)|0; let t=Math.imul(s^(s>>>15),1|s); t=(t+Math.imul(t^(t>>>7),61|t))^t; return ((t^(t>>>14))>>>0)/4294967296; }; };
 const duel = (aId, aStar, bId, bStar, n = 300) => {
   let w = 0;

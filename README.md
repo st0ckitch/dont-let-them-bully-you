@@ -1,6 +1,6 @@
 # DON'T LET THEM BULLY YOU 🥊
 
-A 3D MMA fight simulator that runs entirely in the browser — no build step, no backend.
+A 3D MMA fight simulator that runs entirely in the browser — no backend.
 
 **Play it live:** https://st0ckitch.github.io/dont-let-them-bully-you/
 
@@ -22,7 +22,8 @@ Pick two fighters, press FIGHT, and watch. Every fight is decided by stat-driven
 
 ## How it works
 
-- [three.js](https://github.com/mrdoob/three.js) (vendored, r170) renders the scene; models and the octagon were generated with [Meshy AI](https://www.meshy.ai/) and rigged on Meshy biped skeletons.
+- TypeScript throughout, bundled by Vite. [three.js](https://github.com/mrdoob/three.js) stays vendored at r170 — the fight balance and the animation retargeting were tuned against that exact build.
+- three.js renders the scene; models and the octagon were generated with [Meshy AI](https://www.meshy.ai/) and rigged on Meshy biped skeletons.
 - All animation clips are shared across fighters via world-frame bind-pose retargeting (the rigs share bone names but not bind orientations — up to 137° apart).
 - Strike impacts fire at calibrated moments of each animation clip, gated by real reach distance; defense is a blend of an additive guard overlay, a head-slip subclip, and reactive counters.
 - Impact sounds are synthesized live with WebAudio (layered sub-thump + knock + slap through a compressor).
@@ -31,14 +32,58 @@ Pick two fighters, press FIGHT, and watch. Every fight is decided by stat-driven
 ## Run locally
 
 ```bash
-python3 tools/serve.py 8000 .
+npm install
+npm run dev          # Vite dev server
 ```
 
-then open http://localhost:8000
+Before pushing, check the real production output — the
+`/dont-let-them-bully-you/` base path only exists in a build, so a base-path
+mistake is invisible in dev:
 
-(`python3 -m http.server` works too, but it lets the browser cache ES modules
-heuristically — you edit a file, reload, and the old code still runs. The
-server in `tools/` sends `no-store` to avoid that. See [tools/README.md](tools/README.md).)
+```bash
+npm run build && npm run preview
+```
+
+## Checking your work
+
+```bash
+npm run check        # typecheck + no-any + the headless test suite
+```
+
+That is what CI runs. The three parts individually:
+
+| Command | What it proves |
+| --- | --- |
+| `npm run typecheck` | `tsc --noEmit` under `strict`. No emit — Vite compiles. |
+| `npm run no-any` | no explicit `any` type anywhere in `src/`. `strict` forbids the *implicit* kind; tsconfig has no switch for the explicit kind, so this is a script. |
+| `npm test` | the eight headless harnesses in `tools/` |
+
+**Run `npm test` before anything touching the sim.** `modes/autochess/combat.ts`
+is bit-deterministic and online play works by both peers replaying one seed
+locally — a desync produces two different winners and no error at all.
+
+## Layout
+
+```
+src/
+  main.ts        bootstrap, scene, HUD wiring, multiplayer lobby
+  anim.ts        GLB loading + per-rig clip retargeting
+  fighter3d.ts   one rendered fighter
+  net.ts         PeerJS transport
+  types.ts       Stats, Stance — shared by moves and fighters
+  fighters/      one file per fighter + barrel   (see its README)
+  moves/         one file per move + barrel      (see its README)
+  modes/
+    octagon/     fight.ts — the MMA sim, pure and headless-runnable
+    autochess/   the TFT-style autobattler
+  styles/        one sheet per region, linked in cascade order
+public/
+  assets/        models, animations, audio, fonts — copied verbatim
+vendor/          three.js r170 and its example loaders, bundled by Vite
+```
+
+`main` deploys itself to GitHub Pages via `.github/workflows/deploy.yml`, which
+runs `npm run check` first.
 
 ## Credits & disclaimer
 

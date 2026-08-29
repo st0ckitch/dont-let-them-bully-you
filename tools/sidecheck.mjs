@@ -1,11 +1,11 @@
 // Is the player's 80% win rate a real strategy edge, or a side bias?
 // Run the SAME AiOpponent policy on both sides and see if it's 50/50.
 const L = '../src/modes/autochess/';
-const { Combat, CombatUnit, setCombatRng, ROUND_TIME, playerDamage } = await import(L + 'combat.js');
-const { UNIT_BY_ID } = await import(L + 'units.js');
-const { Pool } = await import(L + 'shop.js');
-const { AiOpponent } = await import(L + 'ai.js');
-const Hex = await import(L + 'hex.js');
+const { Combat, CombatUnit, setCombatRng, ROUND_TIME, playerDamage } = await import(L + 'combat.ts');
+const { UNIT_BY_ID } = await import(L + 'units.ts');
+const { Pool } = await import(L + 'shop.ts');
+const { AiOpponent } = await import(L + 'ai.ts');
+const Hex = await import(L + 'hex.ts');
 const STEP = 1/60;
 const seeded = s0 => { let s=s0|0; return () => { s=(s+0x6D2B79F5)|0; let t=Math.imul(s^(s>>>15),1|s); t=(t+Math.imul(t^(t>>>7),61|t))^t; return ((t^(t>>>14))>>>0)/4294967296; }; };
 const mirror = (c,r) => [Hex.COLS-1-c, Hex.ROWS-1-r];
