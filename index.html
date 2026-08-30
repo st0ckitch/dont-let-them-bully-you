@@ -10,23 +10,20 @@
   <link rel="preconnect" href="https://api.fontshare.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;600;800;900&display=swap" />
   <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=satoshi@400,600,700,800&display=swap" />
-  <link rel="stylesheet" href="./src/styles/tokens.css?v=202608281148" />
-  <link rel="stylesheet" href="./src/styles/broadcast.css?v=202608281148" />
-  <link rel="stylesheet" href="./src/styles/sheets.css?v=202608281148" />
-  <link rel="stylesheet" href="./src/styles/hud.css?v=202608281148" />
-  <link rel="stylesheet" href="./src/styles/menu.css?v=202608281148" />
-  <link rel="stylesheet" href="./src/styles/lobby.css?v=202608281148" />
-  <link rel="stylesheet" href="./src/styles/banner.css?v=202608281148" />
-  <link rel="stylesheet" href="./src/styles/responsive.css?v=202608281148" />
-  <link rel="stylesheet" href="./src/styles/fighter-card.css?v=202608281148" />
+  <link rel="stylesheet" href="./src/styles/tokens.css" />
+  <link rel="stylesheet" href="./src/styles/broadcast.css" />
+  <link rel="stylesheet" href="./src/styles/sheets.css" />
+  <link rel="stylesheet" href="./src/styles/hud.css" />
+  <link rel="stylesheet" href="./src/styles/menu.css" />
+  <link rel="stylesheet" href="./src/styles/lobby.css" />
+  <link rel="stylesheet" href="./src/styles/banner.css" />
+  <link rel="stylesheet" href="./src/styles/responsive.css" />
+  <link rel="stylesheet" href="./src/styles/fighter-card.css" />
   <!-- autochess: scoped under #autochessUi, loaded after core so it wins on shared tokens -->
-  <link rel="stylesheet" href="./src/modes/autochess/styles/base.css?v=202608281148" />
-  <link rel="stylesheet" href="./src/modes/autochess/styles/panels.css?v=202608281148" />
-  <link rel="stylesheet" href="./src/modes/autochess/styles/shop.css?v=202608281148" />
-  <link rel="stylesheet" href="./src/modes/autochess/styles/responsive.css?v=202608281148" />
-  <script type="importmap">
-    { "imports": { "three": "./vendor/three.module.js?v=202608281148" } }
-  </script>
+  <link rel="stylesheet" href="./src/modes/autochess/styles/base.css" />
+  <link rel="stylesheet" href="./src/modes/autochess/styles/panels.css" />
+  <link rel="stylesheet" href="./src/modes/autochess/styles/shop.css" />
+  <link rel="stylesheet" href="./src/modes/autochess/styles/responsive.css" />
 </head>
 <body>
   <canvas id="scene"></canvas>
@@ -238,7 +235,7 @@
       <div id="loadText">Loading arena…</div>
     </div>
   </div>
-  <script src="./vendor/peerjs.min.js?v=202608281148"></script>
-  <script type="module" src="./src/main.js?v=202608281148"></script>
+  <script src="vendor/peerjs.min.js"></script>
+  <script type="module" src="./src/main.ts"></script>
 </body>
 </html>

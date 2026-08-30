@@ -1,7 +1,10 @@
 # tools
 
-Node scripts for the autochess mode. Everything except `decimate.mjs` is
-dependency-free — run them straight with `node`.
+Headless harnesses and asset scripts. They import `src/**/*.ts` directly — Node
+strips types natively, so no build or runner is needed. `featurecheck.mjs` needs
+Playwright and `decimate.mjs` needs meshoptimizer; the rest are dependency-free.
+
+`npm test` runs the eight that return an exit code:
 
 ```
 node hextest.mjs      # hex math, picking stability under float noise, path symmetry
@@ -16,14 +19,8 @@ same-cost units is a near-deterministic damage race that flips 0%↔100% on a fe
 stat points, so it reports healthy rosters as broken. TFT balances board
 contribution, and so does this.
 
-`serve.py` is a no-store static server. Plain `python3 -m http.server` sends
-`Last-Modified` with no `Cache-Control`, so browsers apply heuristic freshness
-and keep running **stale ES modules** after you edit them — you reload and the
-old code still runs, with no error.
-
-```
-python3 tools/serve.py 8124 .
-```
+`serve.py` predates Vite and is kept only for serving a plain directory without
+node. `npm run dev` is the normal way in.
 
 ## Asset pipeline
 
@@ -45,15 +42,11 @@ collapses the mesh to a single shard.
 
 ## Deploying
 
-Run the stamper before every push:
+`main` builds and deploys itself via `.github/workflows/deploy.yml`. Vite
+content-hashes every bundle, so the mixed-build problem `stamp.mjs` used to
+solve is gone: a changed file gets a new filename, and `index.html` is served
+no-store.
 
-```
-node tools/stamp.mjs .
-```
-
-GitHub Pages caches each file independently for 10 minutes, so without this a
-returning browser can mix modules from two different builds — new code calling
-into a stale module throws mid-click, which reads as "buttons randomly stopped
-working". Stamping puts the same `?v=<timestamp>` on every internal import, so
-a client loads either the whole old build or the whole new one, never a mix.
-The loading screen shows the stamp so you can tell which one you're on.
+Locally: `npm run dev` for the Vite dev server, `npm run build && npm run preview`
+to check the real production output (including the `/dont-let-them-bully-you/`
+base path, which only appears in a build).

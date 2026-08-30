@@ -2,9 +2,9 @@
 // Checks the engine terminates, that mirror matches are ~50/50, that star
 // level and cost tier both actually matter, and reports typical fight length.
 const L = '../src/modes/autochess/';
-const { Combat, CombatUnit, setCombatRng, ROUND_TIME, playerDamage, mitigate } = await import(L + 'combat.js');
-const { UNITS, UNIT_BY_ID, statsFor } = await import(L + 'units.js');
-const Hex = await import(L + 'hex.js');
+const { Combat, CombatUnit, setCombatRng, ROUND_TIME, playerDamage, mitigate } = await import(L + 'combat.ts');
+const { UNITS, UNIT_BY_ID, statsFor } = await import(L + 'units.ts');
+const Hex = await import(L + 'hex.ts');
 
 const STEP = 1 / 60;
 

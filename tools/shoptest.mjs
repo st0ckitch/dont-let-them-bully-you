@@ -1,6 +1,6 @@
 const L = '../src/modes/autochess/';
-const S = await import(L + 'shop.js');
-const { UNIT_BY_ID, POOL_COPIES, sellValue } = await import(L + 'units.js');
+const S = await import(L + 'shop.ts');
+const { UNIT_BY_ID, POOL_COPIES, sellValue } = await import(L + 'units.ts');
 
 let fail = 0;
 const ok = (c, m) => { if (!c) { console.log('  FAIL:', m); fail++; } else console.log('  ok:', m); };

@@ -1,4 +1,4 @@
-import * as H from '../src/modes/autochess/hex.js';
+import * as H from '../src/modes/autochess/hex.ts';
 
 let fail = 0;
 const ok = (c, m) => { if (!c) { console.log('FAIL:', m); fail++; } };

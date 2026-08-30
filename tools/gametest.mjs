@@ -5,11 +5,11 @@
 // how long a game lasts, how HP drains, and whether a decent player still wins
 // often enough for the mode to be worth playing.
 const L = '../src/modes/autochess/';
-const { Combat, CombatUnit, setCombatRng, ROUND_TIME, playerDamage } = await import(L + 'combat.js');
-const { UNIT_BY_ID, sellValue } = await import(L + 'units.js');
-const { Pool, Roster, Economy, SHOP_SIZE, REROLL_COST, XP_COST, XP_PER_ROUND, boardCapacity } = await import(L + 'shop.js');
-const { AiOpponent } = await import(L + 'ai.js');
-const Hex = await import(L + 'hex.js');
+const { Combat, CombatUnit, setCombatRng, ROUND_TIME, playerDamage } = await import(L + 'combat.ts');
+const { UNIT_BY_ID, sellValue } = await import(L + 'units.ts');
+const { Pool, Roster, Economy, SHOP_SIZE, REROLL_COST, XP_COST, XP_PER_ROUND, boardCapacity } = await import(L + 'shop.ts');
+const { AiOpponent } = await import(L + 'ai.ts');
+const Hex = await import(L + 'hex.ts');
 
 const STEP = 1 / 60;
 const seeded = s0 => { let s = s0 | 0; return () => { s = (s + 0x6D2B79F5) | 0; let t = Math.imul(s ^ (s >>> 15), 1 | s); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; };

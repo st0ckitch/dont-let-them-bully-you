@@ -3,9 +3,9 @@
 // is bit-deterministic. This proves it, and pins down what the protocol must
 // guarantee (unit construction order).
 const L = '../src/modes/autochess/';
-const { Combat, CombatUnit, setCombatRng, ROUND_TIME } = await import(L + 'combat.js');
-const { UNIT_BY_ID } = await import(L + 'units.js');
-const Hex = await import(L + 'hex.js');
+const { Combat, CombatUnit, setCombatRng, ROUND_TIME } = await import(L + 'combat.ts');
+const { UNIT_BY_ID } = await import(L + 'units.ts');
+const Hex = await import(L + 'hex.ts');
 const STEP = 1/60;
 const seeded = s0 => { let s = s0|0; return () => { s=(s+0x6D2B79F5)|0; let t=Math.imul(s^(s>>>15),1|s); t=(t+Math.imul(t^(t>>>7),61|t))^t; return ((t^(t>>>14))>>>0)/4294967296; }; };
 

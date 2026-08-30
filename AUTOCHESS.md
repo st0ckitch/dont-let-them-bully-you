@@ -5,7 +5,7 @@ rigs. Pick it from the mode selector on the roster screen (**Auto-sim /
 Take control / Autochess**), then press **ENTER THE CAGE**.
 
 Auto-sim and control mode are untouched — the only shared file that changed is
-`fighter3d.js`, which gained two constructor options that both default to the
+`fighter3d.ts`, which gained two constructor options that both default to the
 old behaviour.
 
 ## The loop
@@ -97,13 +97,13 @@ above reflect corrections to several widely-mirrored but stale community tables.
 Pick **Autochess** in the mode selector, then CREATE LOBBY / JOIN with the same
 4-digit code the octagon modes use, and both press READY.
 
-It works the way the octagon mode does — by **not** streaming state. `combat.js`
+It works the way the octagon mode does — by **not** streaming state. `combat.ts`
 is bit-deterministic (`tools/determinism.mjs` proves it over 200 seeds), so peers
 only exchange **boards**: a handful of `{id, star, cell}` per round. Each side
 then runs the identical fight locally and reaches the same result. One message
 per player per round, and no server.
 
-Two invariants make that safe, both enforced in `netmatch.js`:
+Two invariants make that safe, both enforced in `netmatch.ts`:
 
 - **Canonical coordinates.** The host owns rows 4-7 and the guest rows 0-3, on
   *both* peers. The guest's screen is rotated 180° instead of its data —
@@ -128,7 +128,7 @@ including under reversed delivery and duplicate submissions.
 
 ## The opponent
 
-The AI plays **the same game you do** (`ai.js`). It owns a roster, gold, XP and
+The AI plays **the same game you do** (`ai.ts`). It owns a roster, gold, XP and
 a level, rolls its own 5-card shop out of the **shared pool**, buys, merges,
 levels and fields its best units. Nothing is privileged — no stat bonuses, no
 invented star levels, no knowledge of your board. Its purchases really do remove
@@ -170,7 +170,7 @@ silver for a 2-star, gold when it cascades straight to a 3-star.
 
 Cost tier sets the power budget; the fighter's existing 0–100 MMA stats
 (striking / grappling / cardio / chin / speed) distribute it, so a balance
-change in `config.js` still reads through. Reach costs stat budget — the two
+change in `config.ts` still reads through. Reach costs stat budget — the two
 range-2 fighters pay for it in HP and AD.
 
 | Cost | Fighters | Ability |
@@ -201,7 +201,7 @@ exchange. Here a unit attacks about once a second, so:
 ## Layout
 
 7 columns × 8 rows of pointy-top hexes in odd-r offset. Rows 0–3 are the enemy
-half, 4–7 are yours. `hex.js` speaks offset `(col,row)` as the canonical cell
+half, 4–7 are yours. `hex.ts` speaks offset `(col,row)` as the canonical cell
 id and derives axial coordinates for distance, neighbours and pathfinding.
 
 ## Files
@@ -218,8 +218,8 @@ src/tft/ui.js        HUD
 src/tft/tft.css      HUD styles
 ```
 
-`combat.js` is deliberately free of THREE and DOM so the same class runs
-headless — the balance harness drives it directly, mirroring how `fight.js`
+`combat.ts` is deliberately free of THREE and DOM so the same class runs
+headless — the balance harness drives it directly, mirroring how `fight.ts`
 splits `simFight()` from the live `Engine`.
 
 ## Tools

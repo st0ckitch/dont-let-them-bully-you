@@ -1,24 +1,24 @@
 @font-face {
   font-family: 'Anton';
-  src: url('../../assets/fonts/Anton-400.woff2') format('woff2');
+  src: url('/assets/fonts/Anton-400.woff2') format('woff2');
   font-weight: 400;
   font-display: swap;
 }
 @font-face {
   font-family: 'Barlow Condensed';
-  src: url('../../assets/fonts/BarlowCondensed-400.woff2') format('woff2');
+  src: url('/assets/fonts/BarlowCondensed-400.woff2') format('woff2');
   font-weight: 400;
   font-display: swap;
 }
 @font-face {
   font-family: 'Barlow Condensed';
-  src: url('../../assets/fonts/BarlowCondensed-600.woff2') format('woff2');
+  src: url('/assets/fonts/BarlowCondensed-600.woff2') format('woff2');
   font-weight: 600;
   font-display: swap;
 }
 @font-face {
   font-family: 'Barlow Condensed';
-  src: url('../../assets/fonts/BarlowCondensed-700.woff2') format('woff2');
+  src: url('/assets/fonts/BarlowCondensed-700.woff2') format('woff2');
   font-weight: 700;
   font-display: swap;
 }
