@@ -106,14 +106,14 @@ const avgDistinct = distinct.reduce((a, b) => a + b, 0) / distinct.length;
 const pct = x => (100 * x).toFixed(1) + '%';
 console.log(`${GAMES} games x ${ROUNDS} rounds\n`);
 console.log('metric                                  value        human target        random baseline');
-console.log(`roster continuity round-to-round        ${pct(continuity).padStart(6)}       >70%                ~25% (uniform of 9)`);
+console.log(`roster continuity round-to-round        ${pct(continuity).padStart(6)}       >70%                ~25% (uniform of 11)`);
 console.log(`boards with duplicate 1-star copies     ${pct(dupBoards / totalBoards).padStart(6)}       ~0%                 high`);
 console.log(`  duplicate 1-star units per board      ${(dupUnits / totalBoards).toFixed(2).padStart(6)}       pairs OK (hunting 3rd)`);
 console.log(`boards with 3+ copies at one star       ${String(tripleStacks).padStart(6)}       0 (merging must fire)`);
 console.log(`dup fielded over a better benched unit  ${String(dupOverBetter).padStart(6)}       0`);
 console.log(`boards of <=1 unit after round 3        ${pct(tinyBoards / totalBoards).padStart(6)}       0%`);
 console.log(`avg board size                          ${(sizeSum / totalBoards).toFixed(2).padStart(6)}`);
-console.log(`distinct fighters used per game         ${avgDistinct.toFixed(1).padStart(6)}       3-6 of 9            ~9 of 9`);
+console.log(`distinct fighters used per game         ${avgDistinct.toFixed(1).padStart(6)}       3-6 of 11           ~10 of 11`);
 
 console.log('\nstar level by round (avg / max seen):');
 starByRound.forEach((s, i) => {

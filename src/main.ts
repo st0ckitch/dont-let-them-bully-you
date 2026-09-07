@@ -848,7 +848,7 @@ function renderStatSheet() {
 }
 
 // tuned Monte-Carlo win rates vs the field (see fighters/ balance notes)
-const RANK_WR: Record<string, number> = { soso: 54, gigi: 52, levan: 51, dato: 51, david: 50, ilia: 49, davit: 48, cotne: 48, merab: 46 };
+const RANK_WR: Record<string, number> = { soso: 54, gigi: 52, levan: 51, dato: 51, david: 50, lika: 50, karina: 49, ilia: 49, davit: 48, cotne: 48, merab: 46 };
 function renderRankings() {
   const ranked = [...FIGHTERS].sort((x, y) => (RANK_WR[y.id] || 50) - (RANK_WR[x.id] || 50));
   $('#rankings').innerHTML = `<div class="sheetCard">

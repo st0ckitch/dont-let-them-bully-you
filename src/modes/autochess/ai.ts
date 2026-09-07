@@ -47,6 +47,7 @@ const COMPS: Comp[] = [
   { name: 'Long Reach', carry: 'levan', core: ['gigi', 'cotne', 'davit'] },
   { name: 'Prodigy Rush', carry: 'soso', core: ['davit', 'dato', 'cotne'] },
   { name: 'System Control', carry: 'gigi', core: ['dato', 'cotne', 'soso'] },
+  { name: 'Showtime', carry: 'lika', core: ['karina', 'soso', 'davit'] },
 ];
 const LATE_PAYOFF: string[] = ['merab', 'ilia'];
 

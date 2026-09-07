@@ -60,7 +60,7 @@ export const GIGI = {
 ### Voice
 
 `{ win, announce }`, both nullable. `win` is the victory line; `announce` is a
-walk-out line at the opening bell (only Soso has one). Absent means `null`, not
+walk-out line at the opening bell (Soso and Lika have one). Absent means `null`, not
 a missing key.
 
 ### Combat

@@ -27,7 +27,7 @@ console.log(`\nspread: ${min.toFixed(1)}% - ${max.toFixed(1)}%  (README/config n
 // KO share
 let ko = 0, dec = 0, draw = 0;
 for (let i = 0; i < 4000; i++) {
-  const a = FIGHTERS[i % 9], b = FIGHTERS[(i * 7 + 3) % 9];
+  const a = FIGHTERS[i % FIGHTERS.length], b = FIGHTERS[(i * 7 + 3) % FIGHTERS.length];
   if (a === b) continue;
   const r = simFight(a, b);
   if (r === 'draw') draw++; else if (r.endsWith('-dec')) dec++; else ko++;

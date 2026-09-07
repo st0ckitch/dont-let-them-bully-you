@@ -48,7 +48,7 @@ export interface Unit {
   blurb: string;
   role: string;
   color: string;
-  /** hexes; the two reach units pay for it in HP and AD */
+  /** hexes; the reach units pay for it in HP and AD */
   range: number;
   attackClips: string[];
   idleClip: string;

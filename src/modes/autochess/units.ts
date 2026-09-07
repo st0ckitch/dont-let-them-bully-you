@@ -1,4 +1,4 @@
-// Autochess roster: the nine fighters re-expressed as TFT-style units.
+// Autochess roster: the eleven fighters re-expressed as TFT-style units.
 //
 // The MMA sim's 0-100 stats (striking/grappling/cardio/chin/speed) stay the
 // source of truth for who a fighter IS — they're derived into TFT combat stats
@@ -13,11 +13,11 @@ export type { Ability, Unit, StarStats, Entry, BoardSpec, UnitBase, AbilityKind 
 
 // ---- cost tiers ----
 // Thematic ladder: the office crew comes cheap, the two real UFC champions are
-// the chase units. Distribution (3/2/2/1/1) mirrors TFT's shape — many cheap
+// the chase units. Distribution (4/3/2/1/1) mirrors TFT's shape — many cheap
 // units to roll into, one apex unit per tier at the top.
 export const COST: Record<string, number> = {
-  soso: 1, davit: 1, cotne: 1,
-  gigi: 2, dato: 2,
+  soso: 1, davit: 1, cotne: 1, karina: 1,
+  gigi: 2, dato: 2, lika: 2,
   levan: 3, david: 3,
   merab: 4,
   ilia: 5,
@@ -34,8 +34,8 @@ export const TIER_COLOR: Record<number, string> = {
 
 // Copies of each champion in the shared pool. TFT scales copies inversely with
 // cost so cheap units 3-star easily and 5-costs almost never do. Scaled down
-// from TFT's 29/22/18/12/10 because this mode has two shops drawing from a
-// nine-champion roster, not eight shops drawing from ~60.
+// from TFT's 29/22/18/12/10 because this mode has two shops drawing from an
+// eleven-champion roster, not eight shops drawing from ~60.
 export const POOL_COPIES: Record<number, number> = { 1: 18, 2: 14, 3: 11, 4: 8, 5: 6 };
 
 // Gold to buy = cost; selling refunds full price EXCEPT 2-and-3-star units of
@@ -91,6 +91,8 @@ const ABILITIES: Record<string, Ability> = {
   david: { name: 'Executive Decision', clip: 'backflip_kick', mana: 70, kind: 'burst', hits: 1, dmg: 5.0 },
   merab: { name: 'The Machine', clip: 'spartan_kick', mana: 50, kind: 'heal', hits: 1, dmg: 3.4, heal: 1.35 },
   ilia: { name: 'El Matador', clip: 'flying_kick', mana: 80, kind: 'burst', hits: 1, dmg: 6.0 },
+  karina: { name: 'Flying Finish', clip: 'rising_kick', mana: 60, kind: 'burst', hits: 1, dmg: 4.0 },
+  lika: { name: 'Showstopper', clip: 'high_kick', mana: 60, kind: 'burst', hits: 1, dmg: 4.2, stun: 0.5 },
 };
 
 // One-line character reads for the detail panel. These lean on who the fighter
@@ -109,6 +111,8 @@ const ROLE: Record<string, string> = {
   david: 'Carry',
   soso: 'Skirmisher',
   gigi: 'Reach',
+  karina: 'Reach',
+  lika: 'Brawler',
 };
 
 const BLURB: Record<string, string> = {
@@ -121,6 +125,8 @@ const BLURB: Record<string, string> = {
   david: 'Heavy hands, thin chin. Burst him in behind a tank and let him delete the carry.',
   soso: 'Teenage prodigy. Fastest hands in the roster and the squishiest body to go with them.',
   gigi: 'Reads the fight like a system diagram. Sweeps a whole cluster and leaves them stunned.',
+  karina: 'Spin-kick specialist. Pokes from a hex out, then finishes with a flying kick when the mana fills.',
+  lika: 'The showstopper. Dances in behind the front line and stuns whoever she picks with a high kick.',
 };
 
 // Human-readable ability text with the real numbers for a given star level.
@@ -155,6 +161,8 @@ const ATTACK_CLIPS: Record<string, string[]> = {
   david: ['uppercut', 'hook', 'elbow_strike'],
   merab: ['knee_strike', 'elbow_strike', 'hook'],
   ilia: ['hook', 'uppercut', 'knee_strike'],
+  karina: ['hook', 'uppercut', 'knee_strike'],
+  lika: ['uppercut', 'hook', 'elbow_strike'],
 };
 
 // The normalized clip time at which each attack clip lands its blow. Lifted
@@ -167,7 +175,7 @@ export const ATTACK_IMPACT_AT: Record<string, number> = {
 // Range in hexes. Everyone is an MMA fighter, so nobody is a true ranged
 // carry — but the long-kick specialists poke from one hex further, which is
 // what gives the board a front line and a back line worth positioning around.
-const RANGE: Record<string, number> = { soso: 1, davit: 1, cotne: 1, gigi: 2, dato: 1, levan: 2, david: 1, merab: 1, ilia: 1 };
+const RANGE: Record<string, number> = { soso: 1, davit: 1, cotne: 1, gigi: 2, dato: 1, levan: 2, david: 1, merab: 1, ilia: 1, karina: 2, lika: 1 };
 
 // Reach has to be paid for. This mode has no dive or assassin mechanics to
 // punish a back line, so an extra hex of range is otherwise strictly better —
@@ -193,6 +201,8 @@ const TUNE: Record<string, { hp: number; ad: number; as: number }> = {
   david: { hp: 1.0, ad: 1.0, as: 1.0 },
   merab: { hp: 1.0, ad: 1.0, as: 1.0 },
   ilia: { hp: 1.0, ad: 1.0, as: 1.0 },
+  karina: { hp: 1.0, ad: 1.0, as: 1.0 },
+  lika: { hp: 1.0, ad: 1.0, as: 1.0 },
 };
 
 function buildUnit(cfg: Fighter, index: number): Unit {

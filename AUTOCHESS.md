@@ -50,7 +50,7 @@ at 1★ and 579 at 3★. Hover a shop card to preview before buying.
 
 ## Mechanics
 
-Standard TFT rules, scaled to a nine-fighter roster.
+Standard TFT rules, scaled to an eleven-fighter roster.
 
 **Economy** — 5 gold base per round, +1 per 10 banked (capped at +5), plus a
 streak bonus for win *or* loss streaks: **2/3/4 = +1g, 5 = +2g, 6+ = +3g**.

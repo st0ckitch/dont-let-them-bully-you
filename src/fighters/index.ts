@@ -33,6 +33,8 @@ import { LEVAN } from './levan.ts';
 import { DAVID } from './david.ts';
 import { SOSO } from './soso.ts';
 import { GIGI } from './gigi.ts';
+import { KARINA } from './karina.ts';
+import { LIKA } from './lika.ts';
 
 export { MERAB } from './merab.ts';
 export { ILIA } from './ilia.ts';
@@ -43,6 +45,8 @@ export { LEVAN } from './levan.ts';
 export { DAVID } from './david.ts';
 export { SOSO } from './soso.ts';
 export { GIGI } from './gigi.ts';
+export { KARINA } from './karina.ts';
+export { LIKA } from './lika.ts';
 
 export const FIGHTERS: Fighter[] = [
   MERAB,
@@ -54,6 +58,8 @@ export const FIGHTERS: Fighter[] = [
   DAVID,
   SOSO,
   GIGI,
+  KARINA,
+  LIKA,
 ];
 
 export const FIGHTER_BY_ID: Record<string, Fighter> = Object.fromEntries(FIGHTERS.map(f => [f.id, f]));

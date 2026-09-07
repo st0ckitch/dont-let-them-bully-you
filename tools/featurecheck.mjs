@@ -4,7 +4,7 @@ const browser = await chromium.launch();
 const page = await (await browser.newContext({ viewport: { width: 1280, height: 850 } })).newPage();
 const errs = []; page.on('pageerror', e => errs.push(e.message));
 await page.goto('http://localhost:8124/', { waitUntil: 'load' });
-await page.waitForFunction(() => window.__fight?.fighters && Object.keys(window.__fight.fighters).length === 9, null, { timeout: 120000 });
+await page.waitForFunction(() => window.__fight?.fighters && Object.keys(window.__fight.fighters).length === 11, null, { timeout: 120000 });
 await page.click('.modeBtn[data-mode="autochess"]');
 await page.click('#menuFightBtn');
 await page.waitForFunction(() => window.__tft?.board?.loaded, null, { timeout: 60000 });
